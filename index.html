@@ -72,6 +72,11 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 #drop{padding:18px 16px}
 .hits{display:flex;gap:6px;flex-wrap:wrap}
+.mapinfo{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px}
+.mapinfo button{font:inherit;font-weight:600;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+.mapinfo span{background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.mapinfo span:empty{display:none}
+.leaflet-control-scale-line{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--muted)!important}
 .hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
@@ -172,13 +177,28 @@ let results = null;
 /* ---------- 자료 */
 fetch("data/meta.json").then(r => r.json()).then(m => { META = m; $("#verChip").textContent = "자료 기준: " + m.version; })
   .catch(() => { $("#verChip").textContent = "자료를 불러오지 못했습니다. 페이지를 새로고침하세요."; });
-async function fetchBin(u) { // base64(gzip) 텍스트 → ArrayBuffer
-  const bin = atob((await (await fetch(u)).text()).trim()); const u8 = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  return await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+let fetchActive = 0; const fetchQueue = [];   // 큰 파일을 한꺼번에 여러 개 받다 실패하지 않도록 동시에 3개까지만
+async function fetchSlot(fn) {
+  if (fetchActive >= 3) await new Promise(r => fetchQueue.push(r));
+  fetchActive++; try { return await fn(); } finally { fetchActive--; const nx = fetchQueue.shift(); if (nx) nx(); }
+}
+async function fetchBin(u) { // base64(gzip) 텍스트 → ArrayBuffer, 실패하면 3번까지 다시 받음
+  for (let t = 0; ; t++) {
+    try {
+      return await fetchSlot(async () => {
+        const res = await fetch(u); if (!res.ok) throw new Error(`${u} ${res.status}`);
+        const bin = atob((await res.text()).trim()); const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        return await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+      });
+    } catch (e) { if (t >= 3) throw e; await new Promise(r => setTimeout(r, 800 * (t + 1))); }
+  }
 }
 const CHUNK_P = new Map();
-function loadChunk(c) { if (!CHUNK_P.has(c.sgg)) CHUNK_P.set(c.sgg, loadChunkRaw(c)); return CHUNK_P.get(c.sgg); }
+function loadChunk(c) {   // 실패한 결과는 기억하지 않음 → 다음에 다시 시도
+  if (!CHUNK_P.has(c.sgg)) { const p = loadChunkRaw(c); CHUNK_P.set(c.sgg, p); p.catch(() => CHUNK_P.delete(c.sgg)); }
+  return CHUNK_P.get(c.sgg);
+}
 async function loadChunkRaw(c) {
   const [buf, sbuf] = await Promise.all([`data/p_${c.sgg}.txt`, `data/s_${c.sgg}.txt`].map(fetchBin));
   const n = c.n;
@@ -476,15 +496,27 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const CRS5186 = L.extend({}, L.CRS.Simple, { transformation: new L.Transformation(1, -180000, -1, 570000) });
 // 애니메이션 끔: claude.ai 안(다른 출처 iframe)에서는 사용자가 누르기 전까지 브라우저가 화면 갱신(requestAnimationFrame)을
 // 멈춰 둘 수 있어, 서서히 나타나는 타일·확대 애니메이션에 의존하면 지도가 안 보인다.
-const map = L.map("map", { crs: CRS5186, minZoom: -7, maxZoom: 3, zoomSnap: 0.5, attributionControl: false, doubleClickZoom: false,
-  fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, inertia: false })
-  .setView([551000, 199000], -5.5);
-setTimeout(() => map.invalidateSize(false), 300);
+const SEOUL_VIEW = [[537000, 180500], [566500, 217500]];
+const map = L.map("map", { crs: CRS5186, minZoom: -7, maxZoom: 3, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 140,
+  attributionControl: false, doubleClickZoom: false, fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, inertia: false });
+map.fitBounds(SEOUL_VIEW, { animate: false });
+setTimeout(() => { map.invalidateSize(false); }, 300);
+L.control.scale({ imperial: false, maxWidth: 140, position: "bottomleft" }).addTo(map);
+const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
+  const d = L.DomUtil.create("div", "mapinfo"); L.DomEvent.disableClickPropagation(d);
+  d.innerHTML = `<button type="button" id="homeBtn">서울 전체</button><span id="mapLoad" hidden>필지 불러오는 중…</span><span id="zoomHint"></span>`;
+  return d; } });
+new MapInfo().addTo(map);
 const LL = (x, y) => L.latLng(y, x);
 const PARCEL_Z = -1;          // 이 배율부터 필지선 표시
 const GEO = new Map();
+let geoPending = 0;
+function zoomHint() { const el = document.getElementById("zoomHint"); if (el) el.textContent = map.getZoom() < PARCEL_Z ? "더 확대하면 필지선이 보입니다" : ""; }
+map.on("zoomend", zoomHint);
+setTimeout(() => { zoomHint(); document.getElementById("homeBtn").addEventListener("click", () => map.fitBounds(SEOUL_VIEW, { animate: false })); }, 0);
 function loadGeo(c){
   if (GEO.has(c.sgg)) return GEO.get(c.sgg);
+  geoPending++; const ld = document.getElementById("mapLoad"); if (ld) ld.hidden = false;
   const p = (async () => {
     const buf = await fetchBin(`data/g_${c.sgg}.txt`); const dv = new DataView(buf);
     const n = dv.getUint32(0, true); const kind = new Uint8Array(buf.slice(4, 4 + n)); let o = 4 + n;
@@ -507,6 +539,8 @@ function loadGeo(c){
     }
     return { n, kind, rings, bb, cells, G };
   })();
+  p.then(() => {}, () => { GEO.delete(c.sgg); setTimeout(() => base.redraw(), 1500); })   // 실패하면 기억하지 않고 잠시 뒤 다시 그림
+   .finally(() => { geoPending--; const ld = document.getElementById("mapLoad"); if (ld && !geoPending) ld.hidden = true; });
   GEO.set(c.sgg, p); return p;
 }
 let DONG = null;
@@ -551,7 +585,7 @@ const BaseLayer = L.GridLayer.extend({
           ctx.beginPath(); ring.forEach((q, k) => { const p = P(q[0], q[1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        if (coords.z >= -4) {
+        if (coords.z >= -2) {
           ctx.font = `${coords.z >= PARCEL_Z ? 13 : 11}px ${css("--f-body")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = css("--bg"); ctx.fillStyle = ink;
           const m = 80 / s;
