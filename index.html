@@ -177,48 +177,60 @@ const SEOUL = [180000, 535000, 220000, 570000]; // EPSG:5186 대략 범위
 
 const $ = s => document.querySelector(s);
 const fmt = (v, d=0) => v == null ? "" : Number(v).toLocaleString("ko-KR", {maximumFractionDigits:d, minimumFractionDigits:d});
-let META = null; const CHUNK = new Map();
+let META = null;
 let layers = []; // {id, file, layer, name, polys(원좌표), crs, crsAuto, crsNote}
 let results = null;
 
 /* ---------- 자료 */
 fetch("data/meta.json").then(r => r.json()).then(m => { META = m; $("#verChip").textContent = "자료 기준: " + m.version; })
   .catch(() => { $("#verChip").textContent = "자료를 불러오지 못했습니다. 페이지를 새로고침하세요."; });
-let fetchActive = 0; const fetchQueue = [];   // 큰 파일을 한꺼번에 여러 개 받다 실패하지 않도록 동시에 3개까지만
+let fetchActive = 0; const fetchQueue = [];   // 큰 파일을 한꺼번에 여러 개 받다 실패하지 않도록 동시에 6개까지만
 async function fetchSlot(fn) {
-  if (fetchActive >= 3) await new Promise(r => fetchQueue.push(r));
+  if (fetchActive >= 6) await new Promise(r => fetchQueue.push(r));
   fetchActive++; try { return await fn(); } finally { fetchActive--; const nx = fetchQueue.shift(); if (nx) nx(); }
 }
-async function fetchBin(u) { // base64(gzip) 텍스트 → ArrayBuffer, 실패하면 3번까지 다시 받음
+async function fetchBin(u) { // gzip 바이너리 → ArrayBuffer, 실패하면 3번까지 다시 받음
   for (let t = 0; ; t++) {
     try {
       return await fetchSlot(async () => {
         const res = await fetch(u); if (!res.ok) throw new Error(`${u} ${res.status}`);
-        const bin = atob((await res.text()).trim()); const u8 = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-        return await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+        return await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
       });
     } catch (e) { if (t >= 3) throw e; await new Promise(r => setTimeout(r, 800 * (t + 1))); }
   }
 }
-const CHUNK_P = new Map();
-function loadChunk(c) {   // 실패한 결과는 기억하지 않음 → 다음에 다시 시도
-  if (!CHUNK_P.has(c.sgg)) { const p = loadChunkRaw(c); CHUNK_P.set(c.sgg, p); p.catch(() => CHUNK_P.delete(c.sgg)); }
-  return CHUNK_P.get(c.sgg);
+/* 1km 칸 파일: 필지 속성·표본점·외곽선이 함께 들어 있음 (prep_cells.py) */
+const CELLS = new Map(); let cellPending = 0;
+function loadCell(k) {   // 실패한 결과는 기억하지 않음 → 다음에 다시 시도
+  if (!CELLS.has(k)) {
+    cellPending++; const ld = document.getElementById("mapLoad"); if (ld) ld.hidden = false;
+    const p = loadCellRaw(k); CELLS.set(k, p);
+    p.catch(() => { CELLS.delete(k); }).finally(() => { cellPending--; const ld2 = document.getElementById("mapLoad"); if (ld2 && !cellPending) ld2.hidden = true; });
+  }
+  return CELLS.get(k);
 }
-async function loadChunkRaw(c) {
-  const [buf, sbuf] = await Promise.all([`data/p_${c.sgg}.txt`, `data/s_${c.sgg}.txt`].map(fetchBin));
-  const n = c.n;
-  // 큰 필지(500㎡ 이상)의 내부 표본점: 필지순번 → [시작, 개수]
-  const k = new Uint32Array(sbuf, 0, 1)[0], sIdx = new Uint32Array(sbuf, 4, k), sCnt = new Uint32Array(sbuf, 4 + 4*k, k);
-  const sPts = new Int32Array(sbuf, 4 + 8*k); const samp = new Map(); let o = 0;
-  for (let i = 0; i < k; i++) { samp.set(sIdx[i], [o, sCnt[i]]); o += sCnt[i]; }
-  const d = { n, x: new Int32Array(buf, 0, n), y: new Int32Array(buf, 4*n, n), area: new Float32Array(buf, 8*n, n),
-    res: new Float32Array(buf, 12*n, n), non: new Float32Array(buf, 16*n, n), units: new Uint32Array(buf, 20*n, n),
-    bjd: new Uint16Array(buf, 24*n, n), bun: new Uint16Array(buf, 26*n, n), ji: new Uint16Array(buf, 28*n, n),
-    san: new Uint8Array(buf, 30*n, n), zone: new Uint8Array(buf, 31*n, n), samp, sPts };
-  CHUNK.set(c.sgg, d); return d;
+async function loadCellRaw(k) {
+  const buf = await fetchBin(`data/c_${k}.dat`);
+  const h = new Uint32Array(buf, 0, 4); const n = h[0], ks = h[1], np = h[2], gbytes = h[3];
+  let o = 16; const A = (T, len) => { const a = new T(buf, o, len); o += a.byteLength; return a; };
+  const d = { n, x: A(Int32Array, n), y: A(Int32Array, n), area: A(Float32Array, n), res: A(Float32Array, n), non: A(Float32Array, n),
+    units: A(Uint32Array, n), bb: A(Int32Array, 4 * n), goff: A(Uint32Array, n) };
+  const sIdx = A(Uint32Array, ks), sCnt = A(Uint32Array, ks); d.sPts = A(Int32Array, 2 * np);
+  d.gbase = o; d.dv = new DataView(buf); o += gbytes;
+  d.bjd = A(Uint16Array, n); d.bun = A(Uint16Array, n); d.ji = A(Uint16Array, n);
+  d.san = A(Uint8Array, n); d.zone = A(Uint8Array, n); d.kind = A(Uint8Array, n);
+  d.samp = new Map(); let q = 0; for (let i = 0; i < ks; i++) { d.samp.set(sIdx[i], [q, sCnt[i]]); q += sCnt[i]; }
+  return d;
 }
+function ringOf(d, i) {  // 필지 외곽선 좌표(m) [x0,y0,x1,y1,...]
+  const dv = d.dv; let o = d.gbase + d.goff[i]; let nv = dv.getUint16(o, true); o += 2; const wide = nv & 0x8000; nv &= 0x7fff;
+  const r = new Float64Array(2 * nv);
+  if (wide) { for (let k = 0; k < nv; k++) { r[2*k] = dv.getInt32(o, true) / 10; r[2*k+1] = dv.getInt32(o + 4, true) / 10; o += 8; } }
+  else { let x = dv.getInt32(o, true), y = dv.getInt32(o + 4, true); o += 8; r[0] = x / 10; r[1] = y / 10;
+    for (let k = 1; k < nv; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; r[2*k] = x / 10; r[2*k+1] = y / 10; } }
+  return r;
+}
+const cellsIn = (x0, y0, x1, y1) => META.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1));
 
 /* ---------- 도형 유틸 (ring = [[x,y],...]) */
 function ringArea(r){ let s=0; for(let i=0,j=r.length-1;i<r.length;j=i++) s += (r[j][0]*r[i][1]-r[i][0]*r[j][1]); return s/2; }
@@ -405,15 +417,16 @@ async function run(){
       const mp = merged.map(p=>({p, b:bboxOf([p])}));
       const gb = bboxOf(merged);
       const acc={n:0, area:0, res:0, non:0, units:0, zone:{}}; const plist=[];
-      for(const c of META.chunks){
-        if(c.bbox[2]<gb[0]||c.bbox[0]>gb[2]||c.bbox[3]<gb[1]||c.bbox[1]>gb[3]) continue;
-        const d = await loadChunk(c);
+      // 흩어진 구역이면 전체 범위가 아니라 구역마다 걸치는 칸만 받음
+      const csm = new Map(); for (const q of mp) for (const c of cellsIn(q.b[0], q.b[1], q.b[2], q.b[3])) csm.set(c.k, c);
+      const cs = [...csm.values()];
+      const ds = await Promise.all(cs.map(c => loadCell(c.k)));
+      for(const d of ds){
         const x0=gb[0]*10,x1=gb[2]*10,y0=gb[1]*10,y1=gb[3]*10;
         const inMerged=(x,y)=>{ for(const q of mp){ if(x<q.b[0]||x>q.b[2]||y<q.b[1]||y>q.b[3]) continue;
             if(inRing(x,y,q.p[0])){ let h=false; for(let k=1;k<q.p.length;k++) if(inRing(x,y,q.p[k])){h=true;break;} if(!h) return true; } } return false; };
-        const pad=2000; // 큰 필지는 대표점이 구역 밖이어도 일부가 걸칠 수 있어 범위를 넓게 봄(0.1m 단위)
         for(let i=0;i<d.n;i++){
-          const xi=d.x[i], yi=d.y[i]; if(xi<x0-pad||xi>x1+pad||yi<y0-pad||yi>y1+pad) continue;
+          const xi=d.x[i], yi=d.y[i]; if(d.bb[4*i+2]<x0||d.bb[4*i]>x1||d.bb[4*i+3]<y0||d.bb[4*i+1]>y1) continue;
           const s=d.samp.get(i); let inside;
           if(s){ let hit=0; for(let k=0;k<s[1];k++){ const j=2*(s[0]+k); if(inMerged(d.sPts[j]/10, d.sPts[j+1]/10)) hit++; } inside = hit*2 >= s[1]; }
           else { if(xi<x0||xi>x1||yi<y0||yi>y1) continue; inside = inMerged(xi/10, yi/10); }
@@ -512,42 +525,11 @@ const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
 new MapInfo().addTo(map);
 const LL = (x, y) => L.latLng(y, x);
 const PARCEL_Z = -1;          // 이 배율부터 필지선 표시
-const GEO = new Map();
-let geoPending = 0;
 function zoomHint() { const el = document.getElementById("zoomHint"); if (el) el.textContent = map.getZoom() < PARCEL_Z ? "더 확대하면 필지선이 보입니다" : ""; }
 map.on("zoomend", zoomHint);
 setTimeout(() => { zoomHint(); document.getElementById("homeBtn").addEventListener("click", () => map.fitBounds(SEOUL_VIEW, { animate: false })); }, 0);
-function loadGeo(c){
-  if (GEO.has(c.sgg)) return GEO.get(c.sgg);
-  geoPending++; const ld = document.getElementById("mapLoad"); if (ld) ld.hidden = false;
-  const p = (async () => {
-    const buf = await fetchBin(`data/g_${c.sgg}.txt`); const dv = new DataView(buf);
-    const n = dv.getUint32(0, true); const kind = new Uint8Array(buf.slice(4, 4 + n)); let o = 4 + n;
-    const rings = new Array(n), bb = new Float64Array(4 * n);
-    for (let i = 0; i < n; i++) {
-      let nv = dv.getUint16(o, true); o += 2; const wide = nv & 0x8000; nv &= 0x7fff;
-      const r = new Float64Array(2 * nv);
-      if (wide) { for (let k = 0; k < nv; k++) { r[2*k] = dv.getInt32(o, true) / 10; r[2*k+1] = dv.getInt32(o + 4, true) / 10; o += 8; } }
-      else { let x = dv.getInt32(o, true), y = dv.getInt32(o + 4, true); o += 8; r[0] = x / 10; r[1] = y / 10;
-        for (let k = 1; k < nv; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; r[2*k] = x / 10; r[2*k+1] = y / 10; } }
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (let k = 0; k < nv; k++) { const x = r[2*k], y = r[2*k+1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-      rings[i] = r; bb[4*i] = x0; bb[4*i+1] = y0; bb[4*i+2] = x1; bb[4*i+3] = y1;
-    }
-    const G = 250, cells = new Map();   // 250m 격자 색인
-    for (let i = 0; i < n; i++) {
-      for (let gx = Math.floor(bb[4*i] / G); gx <= Math.floor(bb[4*i+2] / G); gx++)
-        for (let gy = Math.floor(bb[4*i+1] / G); gy <= Math.floor(bb[4*i+3] / G); gy++) {
-          const key = gx * 100000 + gy; let a = cells.get(key); if (!a) cells.set(key, a = []); a.push(i); }
-    }
-    return { n, kind, rings, bb, cells, G };
-  })();
-  p.then(() => {}, () => { GEO.delete(c.sgg); setTimeout(() => base.redraw(), 1500); })   // 실패하면 기억하지 않고 잠시 뒤 다시 그림
-   .finally(() => { geoPending--; const ld = document.getElementById("mapLoad"); if (ld && !geoPending) ld.hidden = true; });
-  GEO.set(c.sgg, p); return p;
-}
 let DONG = null;
-fetchBin("data/dong.txt").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); base.redraw(); }).catch(() => {});
+fetchBin("data/dong.dat").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); base.redraw(); }).catch(() => {});
 
 const BaseLayer = L.GridLayer.extend({
   createTile(coords, done) {
@@ -559,24 +541,17 @@ const BaseLayer = L.GridLayer.extend({
     const draw = async () => {
       const ink = css("--ink"), line = css("--line"), muted = css("--muted");
       if (coords.z >= PARCEL_Z && META) {
-        const pad = 5;
-        for (const c of META.chunks) {
-          if (c.bbox[2] < tx0 - pad || c.bbox[0] > tx1 + pad || c.bbox[3] < ty0 - pad || c.bbox[1] > ty1 + pad) continue;
-          const g = await loadGeo(c); const seen = new Set();
-          for (let gx = Math.floor(tx0 / g.G); gx <= Math.floor(tx1 / g.G); gx++)
-            for (let gy = Math.floor(ty0 / g.G); gy <= Math.floor(ty1 / g.G); gy++) {
-              const a = g.cells.get(gx * 100000 + gy); if (!a) continue;
-              for (const i of a) {
-                if (seen.has(i)) continue; seen.add(i);
-                if (g.bb[4*i+2] < tx0 || g.bb[4*i] > tx1 || g.bb[4*i+3] < ty0 || g.bb[4*i+1] > ty1) continue;
-                const r = g.rings[i]; ctx.beginPath();
-                for (let k = 0; k < r.length; k += 2) { const p = P(r[k], r[k+1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
-                ctx.closePath();
-                const kd = g.kind[i];
-                if (kd) { ctx.fillStyle = kd === 1 ? "rgba(128,128,128,.28)" : kd === 2 ? "rgba(70,130,200,.28)" : "rgba(120,100,80,.25)"; ctx.fill(); }
-                ctx.strokeStyle = muted; ctx.globalAlpha = coords.z >= 1 ? .7 : .45; ctx.lineWidth = .6; ctx.stroke(); ctx.globalAlpha = 1;
-              }
-            }
+        const ds = await Promise.all(cellsIn(tx0 - 5, ty0 - 5, tx1 + 5, ty1 + 5).map(c => loadCell(c.k)));
+        const X0 = tx0 * 10, X1 = tx1 * 10, Y0 = ty0 * 10, Y1 = ty1 * 10;
+        ctx.lineWidth = .6;
+        for (const d of ds) for (let i = 0; i < d.n; i++) {
+          if (d.bb[4*i+2] < X0 || d.bb[4*i] > X1 || d.bb[4*i+3] < Y0 || d.bb[4*i+1] > Y1) continue;
+          const r = ringOf(d, i); ctx.beginPath();
+          for (let k = 0; k < r.length; k += 2) { const p = P(r[k], r[k+1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+          ctx.closePath();
+          const kd = d.kind[i];
+          if (kd) { ctx.fillStyle = kd === 1 ? "rgba(128,128,128,.28)" : kd === 2 ? "rgba(70,130,200,.28)" : "rgba(120,100,80,.25)"; ctx.fill(); }
+          ctx.strokeStyle = muted; ctx.globalAlpha = coords.z >= 1 ? .7 : .45; ctx.stroke(); ctx.globalAlpha = 1;
         }
       }
       if (DONG) {
@@ -598,7 +573,7 @@ const BaseLayer = L.GridLayer.extend({
         }
       }
     };
-    draw().then(() => done(null, tile)).catch(e => { console.error(e); done(null, tile); });
+    draw().then(() => done(null, tile)).catch(e => { console.error(e); done(null, tile); setTimeout(() => base.redraw(), 1500); });
     return tile;
   }
 });
@@ -694,13 +669,13 @@ async function findParcel() {
 }
 async function goTo(bi, m) {
   $("#hits").innerHTML = "";
-  const b = META.bjd[bi]; const c = META.chunks.find(c => c.sgg === b[0].slice(0, 5));
+  const b = META.bjd[bi]; const keys = META.bjd_cells[String(bi)] || [];
   const dong = DONG && DONG.find(d => d[0] === bi);
-  if (!m || !m[3] || !c) { if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false }); return; }
-  const d = await loadChunk(c); const bun = +m[3], ji = m[4] ? +m[4] : 0, san = m[2] ? 1 : 0;
-  for (let i = 0; i < d.n; i++) if (d.bjd[i] === bi && d.bun[i] === bun && d.ji[i] === ji && d.san[i] === san) {
+  if (!m || !m[3] || !keys.length) { if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false }); return; }
+  const bun = +m[3], ji = m[4] ? +m[4] : 0, san = m[2] ? 1 : 0;
+  for (const d of await Promise.all(keys.map(loadCell))) for (let i = 0; i < d.n; i++) if (d.bjd[i] === bi && d.bun[i] === bun && d.ji[i] === ji && d.san[i] === san) {
     map.setView(LL(d.x[i] / 10, d.y[i] / 10), 1.5, { animate: false });
-    const g = await loadGeo(c); const r = g.rings[i]; const ll = []; for (let k = 0; k < r.length; k += 2) ll.push(LL(r[k], r[k+1]));
+    const r = ringOf(d, i); const ll = []; for (let k = 0; k < r.length; k += 2) ll.push(LL(r[k], r[k+1]));
     const hl = L.polygon(ll, { color: css("--warn"), weight: 3, fill: false, interactive: false }).addTo(map); setTimeout(() => map.removeLayer(hl), 6000);
     setRun(`${b[1]} ${san ? "산" : ""}${bun}${ji ? "-" + ji : ""}로 이동했습니다.`); return;
   }
