@@ -72,6 +72,19 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 #drop{padding:18px 16px}
 .hits{display:flex;gap:6px;flex-wrap:wrap}
+.zones{display:flex;gap:8px;flex-wrap:wrap}
+.zones:empty{display:none}
+.zchip{display:inline-flex;align-items:center;gap:8px;padding:4px 4px 4px 10px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);font-size:13px}
+.zchip span{color:var(--muted);font-family:var(--f-num);font-size:12px}
+.zchip.warn{border-color:var(--warn)}
+.zchip .rm{font-size:16px;padding:0 6px}
+.zchip b{outline:none;border-bottom:1px dashed transparent;cursor:text}
+.zchip b:hover,.zchip b:focus{border-bottom-color:var(--accent)}
+.drawtip{position:absolute;z-index:800;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;transform:translate(14px,14px)}
+.drawtip b{color:var(--accent);font-size:15px;font-family:var(--f-num)}
+.drawtip small{display:block;color:var(--muted);margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
+.zlabel{background:var(--panel)!important;color:var(--ink)!important;border:1px solid var(--accent)!important;font-family:var(--f-body);font-size:12px;padding:2px 8px!important;box-shadow:none!important}
+.zlabel::before{display:none}
 .mapinfo{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px}
 .mapinfo button{font:inherit;font-weight:600;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 .mapinfo span{background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
@@ -106,7 +119,7 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <button class="btn sm ghost" id="undoBtn" disabled>점 하나 지우기</button>
       <button class="btn sm ghost" id="cancelBtn">그만두기</button>
     </div>
-    <div id="map" aria-label="서울 지적도"></div>
+    <div id="map" tabindex="0" aria-label="서울 지적도"></div>
     <p class="hint">멀리서는 법정동 경계, 가까이 확대하면 필지선이 보입니다. 회색은 도로, 파란색은 하천입니다. 그린 구역과 넣은 파일의 구역은 초록색으로 표시됩니다.</p>
     <div class="or">또는 GIS 파일 넣기</div>
     <div id="drop" tabindex="0" role="button" aria-label="파일 선택">
@@ -114,21 +127,15 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <span class="hint">SHP 묶음(.shp·.prj·.dbf·.shx), 그 묶음을 압축한 .zip, 또는 .gpkg 파일. 여러 개를 한 번에 넣어도 됩니다.</span>
     </div>
     <input type="file" id="fileInput" multiple accept=".zip,.shp,.shx,.dbf,.prj,.cpg,.gpkg" hidden>
+    <div class="zones" id="zones" aria-label="넣은 구역"></div>
+    <p class="hint" id="zonesHint" hidden>구역 이름을 누르면 고칠 수 있습니다(엑셀의 '명칭'). 이름이 같은 구역은 하나로 합쳐 계산합니다.</p>
+    <p id="runStatus" class="hint"></p>
   </section>
 
-  <section class="step" aria-labelledby="s2">
-    <h2 id="s2"><span class="no">2</span>분류 이름 확인</h2>
-    <p class="hint">엑셀의 '명칭' 칸에 들어갈 이름입니다. <b>이름이 같은 파일은 하나로 합쳐서</b> 계산합니다(예: '광역(단독)'과 '광역(일반)'을 둘 다 '광역'으로 하면 겹치는 땅은 한 번만 셉니다).</p>
-    <div class="tablebox"><table>
-      <thead><tr><th>파일</th><th>분류 이름</th><th class="num">구역 수</th><th>좌표계</th><th></th></tr></thead>
-      <tbody id="layerRows"><tr><td colspan="5" class="hint">아직 넣은 파일이 없습니다.</td></tr></tbody>
-    </table></div>
-    <div class="row"><button class="btn" id="runBtn" disabled>계산하기</button><span id="runStatus" class="hint"></span></div>
-  </section>
 
   <section class="step" aria-labelledby="s3">
-    <h2 id="s3"><span class="no">3</span>결과</h2>
-    <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 파일을 넣고 계산하면 바뀝니다</span></div>
+    <h2 id="s3"><span class="no">2</span>결과</h2>
+    <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div class="tablebox"><table id="resultTable"></table></div>
     <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><span id="dlStatus" class="hint"></span></div>
     <details>
@@ -347,46 +354,43 @@ async function addFiles(files){
       const nm = base(L.layer && found.filter(x=>x.file===L.file).length>1 ? L.layer : L.file);
       layers.push({id:++seq, file:L.file+(L.layer&&L.layer!==base(L.file)?` › ${L.layer}`:""), name:nm, polys:L.polys, crs, note});
     }
-    renderLayers(); fitToLayers(layers.slice(-found.length)); setRun(`${found.length}개 레이어를 읽었습니다. 지도에서 위치를 확인하고, 분류 이름을 정한 뒤 계산하기를 누르세요.`);
+    renderLayers(); fitToLayers(layers.slice(-found.length)); scheduleRun();
   }catch(err){ console.error(err); setRun("파일을 읽다가 문제가 생겼습니다: "+(err.message||err),"err"); }
 }
-function crsOptions(sel){
-  const opts = Object.keys(CRS_LABEL).map(k=>`<option value="${k}" ${k===sel?"selected":""}>${CRS_LABEL[k]}</option>`).join("");
-  return (sel && !CRS_LABEL[sel] ? `<option value="${sel}" selected>파일의 좌표계</option>` : "") + (sel?"":`<option value="" selected>골라주세요</option>`) + opts;
-}
+function layerArea(L){ try { return toSeoul(L.polys, L.crs).reduce((t,p)=>t+polyArea(p),0); } catch(e){ return null; } }
 function renderLayers(){
-  const tb=$("#layerRows");
-  if(!layers.length){ tb.innerHTML=`<tr><td colspan="5" class="hint">아직 넣은 파일이 없습니다.</td></tr>`; $("#runBtn").disabled=true; return; }
-  tb.innerHTML="";
+  const box=$("#zones"); box.innerHTML="";
   for(const L of layers){
-    const tr=document.createElement("tr");
-    const warn = !L.note || !L.note.startsWith("파일에");
-    tr.innerHTML = `<td style="white-space:normal;min-width:12ch">${esc(L.file)}</td>
-      <td><input type="text" class="name" id="nm${L.id}" value="${esc(L.name)}" aria-label="분류 이름"></td>
-      <td class="num">${fmt(L.polys.length)}</td>
-      <td><select id="crs${L.id}" aria-label="좌표계">${crsOptions(L.crs)}</select> <span class="tag ${warn?"warn":""}">${esc(L.note||"")}</span></td>
-      <td><button class="rm" aria-label="이 파일 빼기" data-id="${L.id}">×</button></td>`;
-    tb.appendChild(tr);
-    tr.querySelector("input").addEventListener("input",e=>{ L.name=e.target.value; });
-    tr.querySelector("select").addEventListener("change",e=>{ L.crs=e.target.value; L.note="직접 고름"; renderLayers(); });
-    tr.querySelector(".rm").addEventListener("click",()=>{ layers=layers.filter(x=>x.id!==L.id); renderLayers(); });
+    const warn = !L.crs || (L.note && !/^(파일에|지도에서)/.test(L.note));
+    const a = L.crs ? layerArea(L) : null;
+    const chip=document.createElement("span"); chip.className="zchip"+(warn?" warn":"");
+    chip.title = L.file + (L.note ? " · " + L.note : "");
+    chip.innerHTML = `<b contenteditable="plaintext-only" spellcheck="false" title="눌러서 이름 고치기">${esc(L.name)}</b>${a!=null?`<span>${fmt(a)}㎡</span>`:""}${warn?`<span>${esc(L.crs?"좌표계 추정":"좌표계 모름")}</span>`:""}<button class="rm" aria-label="${esc(L.name)} 빼기">×</button>`;
+    chip.querySelector(".rm").addEventListener("click",()=>{ layers=layers.filter(x=>x.id!==L.id); renderLayers(); scheduleRun(); });
+    const nm = chip.querySelector("b");
+    nm.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
+    nm.addEventListener("blur", () => { const v = nm.textContent.trim(); if (v && v !== L.name) { L.name = v; drawOverlays(); scheduleRun(); } else nm.textContent = L.name; });
+    box.appendChild(chip);
   }
-  $("#runBtn").disabled = !layers.length;
+  $("#zonesHint").hidden = !layers.length;
   drawOverlays();
 }
+let runTimer=null, running=false, runAgain=false;
+function scheduleRun(){ clearTimeout(runTimer); runTimer=setTimeout(async()=>{
+  if(running){ runAgain=true; return; }
+  running=true; try { await run(); } finally { running=false; if(runAgain){ runAgain=false; scheduleRun(); } } }, 250); }
 const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function setRun(msg, kind){ const el=$("#runStatus"); el.textContent=msg; el.className = kind? "status "+(kind==="err"?"err":"warn") : "hint"; }
 
 /* ---------- 계산 */
-$("#runBtn").addEventListener("click", run);
 async function run(){
-  if(!META){ setRun("자료를 아직 불러오지 못했습니다. 잠시 후 다시 눌러주세요.","warn"); return; }
-  const bad = layers.filter(L=>!L.crs); if(bad.length){ setRun("좌표계를 골라야 하는 파일이 있습니다: "+bad.map(b=>b.file).join(", "),"err"); return; }
-  $("#runBtn").disabled=true;
+  if(!layers.length){ results=null; renderResults(); setRun(""); return; }
+  if(!META){ setRun("자료를 불러오는 중입니다. 잠시 뒤 자동으로 계산합니다.","warn"); setTimeout(scheduleRun, 1500); return; }
   try{
     const groups=new Map();
-    for(const L of layers){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
-    const out=[]; const warns=[]; let gi=0;
+    const warns=[]; for(const L of layers.filter(L=>!L.crs)) warns.push(`'${L.file}'의 좌표계를 알 수 없어 뺐습니다(.prj 파일을 같이 넣어주세요).`);
+    for(const L of layers.filter(L=>L.crs)){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
+    const out=[]; let gi=0;
     for(const [name, Ls] of groups){
       gi++; setRun(`계산 중… (${gi}/${groups.size}) ${name}`); await new Promise(r=>setTimeout(r,20));
       let polys=[]; for(const L of Ls) polys.push(...toSeoul(L.polys, L.crs));
@@ -425,10 +429,9 @@ async function run(){
     }
     results={rows:out, warns};
     renderResults();
-    setRun(`계산을 마쳤습니다. 분류 ${out.length}개, 필지 ${fmt(out.reduce((s,r)=>s+r.n,0))}개.`, warns.length?"warn":null);
+    setRun(`계산 완료: 구역 ${out.length}개, 필지 ${fmt(out.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
     if(warns.length) setRun(warns.join(" / "),"warn");
   }catch(err){ console.error(err); setRun("계산하다가 문제가 생겼습니다: "+(err.message||err),"err"); }
-  $("#runBtn").disabled=false;
 }
 const round1 = v => Math.round(v*10)/10;
 
@@ -605,8 +608,13 @@ const overlay = L.layerGroup().addTo(map);
 function drawOverlays() {
   overlay.clearLayers(); const col = css("--accent");
   for (const L0 of layers) {
+    if (!L0.crs) continue;
     let polys; try { polys = toSeoul(L0.polys, L0.crs); } catch (e) { continue; }
     for (const p of polys) L.polygon(p.map(r => r.map(q => LL(q[0], q[1]))), { color: col, weight: 2, fillOpacity: .15, interactive: false }).addTo(overlay);
+    if (!polys.length) continue;
+    const b = bboxOf(polys), area = polys.reduce((t, p) => t + polyArea(p), 0);
+    L.tooltip({ permanent: true, direction: "center", className: "zlabel", interactive: false })
+      .setLatLng(LL((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)).setContent(`${esc(L0.name)} · ${fmt(area)}㎡`).addTo(overlay);
   }
 }
 function fitToLayers(ls) {
@@ -615,34 +623,57 @@ function fitToLayers(ls) {
   map.fitBounds([LL(b[0], b[1]), LL(b[2], b[3])], { padding: [20, 20], maxZoom: 1, animate: false });
 }
 
-/* 그리기 */
-let drawing = null; // {pts:[[x,y]], line, marks}
+/* 그리기: 점을 찍는 동안 마우스를 따라 경계와 면적이 실시간으로 바뀜(네이버 지도 면적재기처럼) */
+let drawing = null; // {pts:[[x,y]], cur:[x,y]|null}
 const drawLayer = L.layerGroup().addTo(map);
+const tip = L.DomUtil.create("div", "drawtip", map.getContainer()); tip.hidden = true;
 function drawRefresh() {
-  drawLayer.clearLayers(); if (!drawing) return; const col = css("--accent");
-  const ll = drawing.pts.map(p => LL(p[0], p[1]));
-  if (ll.length >= 2) L.polyline(ll.concat(ll.length >= 3 ? [ll[0]] : []), { color: col, weight: 2, dashArray: "6 4", interactive: false }).addTo(drawLayer);
-  ll.forEach((q, i) => L.circleMarker(q, { radius: i ? 4 : 6, color: col, weight: 2, fillColor: css("--panel"), fillOpacity: 1, interactive: false }).addTo(drawLayer));
-  $("#doneBtn").disabled = drawing.pts.length < 3; $("#undoBtn").disabled = !drawing.pts.length;
-  $("#drawMsg").textContent = drawing.pts.length < 3 ? `지도를 눌러 구역 모서리를 차례로 찍으세요. (${drawing.pts.length}개 찍음, 3개 이상 필요)` : `${drawing.pts.length}개 찍음. 다 찍었으면 '완료'를 누르세요.`;
+  drawLayer.clearLayers(); tip.hidden = true; if (!drawing) return; const col = css("--accent");
+  const pts = drawing.cur ? drawing.pts.concat([drawing.cur]) : drawing.pts;
+  const ll = pts.map(p => LL(p[0], p[1]));
+  if (ll.length >= 3) L.polygon(ll, { color: col, weight: 2, dashArray: "6 4", fillOpacity: .12, interactive: false }).addTo(drawLayer);
+  else if (ll.length === 2) L.polyline(ll, { color: col, weight: 2, dashArray: "6 4", interactive: false }).addTo(drawLayer);
+  drawing.pts.forEach((p, i) => L.circleMarker(LL(p[0], p[1]), { radius: i ? 4 : 6, color: col, weight: 2, fillColor: css("--panel"), fillOpacity: 1, interactive: false }).addTo(drawLayer));
+  const n = drawing.pts.length;
+  $("#doneBtn").disabled = n < 3; $("#undoBtn").disabled = !n;
+  $("#drawMsg").textContent = n < 3 ? `지도를 눌러 구역 모서리를 차례로 찍으세요. (${n}개 찍음)` : `${n}개 찍음 · 더블클릭, 마우스 오른쪽 버튼, Esc 또는 '완료'로 마침`;
+  // 면적 칸: 커서(또는 마지막 점) 바로 옆
+  const at = drawing.cur || drawing.pts[n - 1];
+  if (at && pts.length >= 2) {
+    const ring = pts.concat([pts[0]]); const area = pts.length >= 3 ? Math.abs(ringArea(ring)) : 0;
+    let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]);
+    tip.innerHTML = pts.length >= 3 ? `총면적 <b>${fmt(area, 1)}</b>㎡<small>더블클릭·오른쪽 버튼·Esc로 마침</small>`
+                                     : `거리 <b>${fmt(len, 1)}</b>m<small>점을 하나 더 찍으면 면적이 나옵니다</small>`;
+    const cp = map.latLngToContainerPoint(LL(at[0], at[1])); tip.style.left = cp.x + "px"; tip.style.top = cp.y + "px"; tip.hidden = false;
+  }
 }
 function setDrawing(on) {
-  drawing = on ? { pts: [] } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on;
-  $("#map").classList.toggle("drawing", on); drawRefresh();
+  drawing = on ? { pts: [], cur: null } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on;
+  $("#map").classList.toggle("drawing", on); drawRefresh(); if (on) $("#map").focus();
+}
+const same = (a, b) => a && b && Math.abs(a[0] - b[0]) < 0.05 && Math.abs(a[1] - b[1]) < 0.05;
+function finishDrawing() {
+  if (!drawing) return;
+  if (drawing.pts.length < 3) { setDrawing(false); return; }
+  const ring = drawing.pts.slice(); ring.push(ring[0]);
+  if (ringArea(ring) > 0) ring.reverse(); // 바깥 고리는 시계방향으로 통일
+  const no = layers.filter(l => l.note === "지도에서 그림").length ? Math.max(...layers.filter(l => l.note === "지도에서 그림").map(l => l.no)) + 1 : 1;
+  layers.push({ id: ++seq, no, file: `지도에서 그린 구역 ${no}`, name: `구역 ${no}`, polys: [[ring]], crs: "EPSG:5186", note: "지도에서 그림" });
+  setDrawing(false); renderLayers(); scheduleRun();
 }
 $("#drawBtn").addEventListener("click", () => setDrawing(true));
 $("#cancelBtn").addEventListener("click", () => setDrawing(false));
 $("#undoBtn").addEventListener("click", () => { drawing.pts.pop(); drawRefresh(); });
-map.on("click", e => { if (!drawing) return; drawing.pts.push([e.latlng.lng, e.latlng.lat]); drawRefresh(); });
-let drawnNo = 0;
-$("#doneBtn").addEventListener("click", () => {
-  const ring = drawing.pts.slice(); ring.push(ring[0]);
-  if (ringArea(ring) > 0) ring.reverse(); // 바깥 고리는 시계방향으로 통일
-  drawnNo++;
-  layers.push({ id: ++seq, file: `지도에서 그린 구역 ${drawnNo}`, name: `구역 ${drawnNo}`, polys: [[ring]], crs: "EPSG:5186", note: "지도에서 그림" });
-  setDrawing(false); renderLayers();
-  setRun(`구역 ${drawnNo}을 추가했습니다(면적 약 ${fmt(Math.abs(ringArea(ring)))}㎡). 더 그리거나, 분류 이름을 정한 뒤 계산하기를 누르세요.`);
-});
+$("#doneBtn").addEventListener("click", finishDrawing);
+map.on("click", e => { if (!drawing) return; const p = [e.latlng.lng, e.latlng.lat];
+  if (drawing.pts.length >= 3 && map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(LL(...drawing.pts[0]))) < 10) { finishDrawing(); return; } // 첫 점을 누르면 마침
+  if (!same(p, drawing.pts[drawing.pts.length - 1])) drawing.pts.push(p); drawRefresh(); });
+map.on("mousemove", e => { if (!drawing || !drawing.pts.length) return; drawing.cur = [e.latlng.lng, e.latlng.lat]; drawRefresh(); });
+map.on("mouseout", () => { if (!drawing) return; drawing.cur = null; drawRefresh(); });
+map.on("dblclick", e => { if (!drawing) return; L.DomEvent.stop(e); finishDrawing(); });
+map.on("contextmenu", e => { if (!drawing) return; if (e.originalEvent) e.originalEvent.preventDefault(); drawing.cur = null; finishDrawing(); });
+map.on("move zoom", () => { if (drawing) drawRefresh(); });
+document.addEventListener("keydown", e => { if (!drawing) return; if (e.key === "Escape") { drawing.cur = null; finishDrawing(); } else if (e.key === "Backspace" && drawing.pts.length && document.activeElement && document.activeElement.tagName !== "INPUT") { e.preventDefault(); drawing.pts.pop(); drawRefresh(); } });
 
 /* 찾기: '동 이름 + 지번' */
 async function findParcel() {
