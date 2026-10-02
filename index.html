@@ -565,7 +565,8 @@ const BaseLayer = L.GridLayer.extend({
     return tile;
   }
 });
-const base = new BaseLayer({ tileSize: 256, updateWhenZooming: false, keepBuffer: 1 }).addTo(map);
+// GridLayer 기본 minZoom은 0 → 서울 전체(마이너스 배율)에서도 그리도록 지도와 같은 범위로 지정
+const base = new BaseLayer({ tileSize: 256, updateWhenZooming: false, keepBuffer: 1, minZoom: -7, maxZoom: 3 }).addTo(map);
 const overlay = L.layerGroup().addTo(map);
 function drawOverlays() {
   overlay.clearLayers(); const col = css("--accent");
