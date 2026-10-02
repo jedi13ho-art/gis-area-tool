@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>구역 연면적 집계기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 한 줄 흐름의 작업 화면 — ① 파일 넣기 → ② 분류 확인 → ③ 결과·엑셀. 지적도 청사진 톤의 청록 잉크 */
+:root{
+  --bg:#f4f6f5; --panel:#ffffff; --ink:#1b2b2a; --muted:#5d6f6c; --line:#d5dedb;
+  --accent:#0f6b63; --accent-ink:#ffffff; --accent-soft:#e3f0ed; --warn:#9a5b00; --warn-soft:#fbf1df; --bad:#b3261e;
+  --sample:#8a9794;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121817; --panel:#1a2221; --ink:#e3ecea; --muted:#9db0ac; --line:#2e3b39;
+  --accent:#4fb8ab; --accent-ink:#0d1716; --accent-soft:#1e3330; --warn:#f0b45a; --warn-soft:#33281a; --bad:#ff8a80; --sample:#6f7f7c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121817; --panel:#1a2221; --ink:#e3ecea; --muted:#9db0ac; --line:#2e3b39;
+  --accent:#4fb8ab; --accent-ink:#0d1716; --accent-soft:#1e3330; --warn:#f0b45a; --warn-soft:#33281a; --bad:#ff8a80; --sample:#6f7f7c; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:flex;flex-direction:column;gap:20px}
+header h1{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:68ch}
+.ver{display:inline-flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--line)}
+section.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.step h2{margin:0;font-size:17px;font-weight:600;display:flex;align-items:center;gap:10px}
+.step h2 .no{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:14px;font-family:var(--f-num)}
+.hint{color:var(--muted);font-size:13.5px;margin:0}
+#drop{border:2px dashed var(--line);border-radius:10px;padding:34px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+#drop:hover,#drop:focus-visible,#drop.over{border-color:var(--accent);background:var(--accent-soft);outline:none}
+#drop strong{display:block;font-size:17px;margin-bottom:6px}
+.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--accent);padding:10px 18px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:var(--accent-soft);font-weight:600;font-size:12.5px}
+td.num,th.num{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+th.zone-group{text-align:center;border-left:2px solid var(--accent)}
+td.gs,th.gs{border-left:2px solid var(--accent);font-weight:600}
+input[type=text],select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
+input.name{width:16ch}
+.status{font-size:13.5px;padding:10px 12px;border-radius:8px;background:var(--accent-soft)}
+.status.warn{background:var(--warn-soft);color:var(--warn)}
+.status.err{background:var(--warn-soft);color:var(--bad)}
+.tag{font-size:11.5px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+.tag.warn{border-color:var(--warn);color:var(--warn)}
+.sample td{color:var(--sample)}
+.sample-badge{font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:5px}
+details{font-size:13.5px;color:var(--muted)}
+details summary{cursor:pointer;color:var(--ink);font-weight:500}
+details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:90ch}
+.rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px}
+.rm:hover{color:var(--bad)}
+.maptools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.maptools input[type=text]{width:22ch}
+.btn.sm{padding:6px 12px;font-size:13.5px}
+#map{height:460px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0}
+@media (max-width:600px){#map{height:340px}}
+#map.drawing{cursor:crosshair}
+#map .leaflet-container{background:var(--bg)}
+.drawbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13.5px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+#drop{padding:18px 16px}
+.hits{display:flex;gap:6px;flex-wrap:wrap}
+.hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+/* Leaflet 1.9.4 CSS (BSD-2, 이미지 규칙 제외) */  .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; } .leaflet-container { overflow: hidden; } .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-user-drag: none; } .leaflet-tile::selection { background: transparent; } .leaflet-safari .leaflet-tile { image-rendering: -webkit-optimize-contrast; } .leaflet-safari .leaflet-tile-container { width: 1600px; height: 1600px; -webkit-transform-origin: 0 0; } .leaflet-marker-icon, .leaflet-marker-shadow { display: block; } .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; } .leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile { max-width: none !important; max-height: none !important; width: auto; padding: 0; } .leaflet-container img.leaflet-tile { mix-blend-mode: plus-lighter; } .leaflet-container.leaflet-touch-zoom { -ms-touch-action: pan-x pan-y; touch-action: pan-x pan-y; } .leaflet-container.leaflet-touch-drag { -ms-touch-action: pinch-zoom; touch-action: none; touch-action: pinch-zoom; } .leaflet-container.leaflet-touch-drag.leaflet-touch-zoom { -ms-touch-action: none; touch-action: none; } .leaflet-container { -webkit-tap-highlight-color: transparent; } .leaflet-container a { -webkit-tap-highlight-color: rgba(51, 181, 229, 0.4); } .leaflet-tile { filter: inherit; visibility: hidden; } .leaflet-tile-loaded { visibility: inherit; } .leaflet-zoom-box { width: 0; height: 0; -moz-box-sizing: border-box; box-sizing: border-box; z-index: 800; } .leaflet-overlay-pane svg { -moz-user-select: none; } .leaflet-pane { z-index: 400; } .leaflet-tile-pane { z-index: 200; } .leaflet-overlay-pane { z-index: 400; } .leaflet-shadow-pane { z-index: 500; } .leaflet-marker-pane { z-index: 600; } .leaflet-tooltip-pane { z-index: 650; } .leaflet-popup-pane { z-index: 700; } .leaflet-map-pane canvas { z-index: 100; } .leaflet-map-pane svg { z-index: 200; } .leaflet-vml-shape { width: 1px; height: 1px; } .leaflet-control { position: relative; z-index: 800; pointer-events: visiblePainted; pointer-events: auto; } .leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; } .leaflet-top { top: 0; } .leaflet-right { right: 0; } .leaflet-bottom { bottom: 0; } .leaflet-left { left: 0; } .leaflet-control { float: left; clear: both; } .leaflet-right .leaflet-control { float: right; } .leaflet-top .leaflet-control { margin-top: 10px; } .leaflet-bottom .leaflet-control { margin-bottom: 10px; } .leaflet-left .leaflet-control { margin-left: 10px; } .leaflet-right .leaflet-control { margin-right: 10px; } .leaflet-fade-anim .leaflet-popup { opacity: 0; -webkit-transition: opacity 0.2s linear; -moz-transition: opacity 0.2s linear; transition: opacity 0.2s linear; } .leaflet-fade-anim .leaflet-map-pane .leaflet-popup { opacity: 1; } .leaflet-zoom-animated { -webkit-transform-origin: 0 0; -ms-transform-origin: 0 0; transform-origin: 0 0; } svg.leaflet-zoom-animated { will-change: transform; } .leaflet-zoom-anim .leaflet-zoom-animated { -webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1); -moz-transition: -moz-transform 0.25s cubic-bezier(0,0,0.25,1); transition: transform 0.25s cubic-bezier(0,0,0.25,1); } .leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile { -webkit-transition: none; -moz-transition: none; transition: none; } .leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; } .leaflet-interactive { cursor: pointer; } .leaflet-grab { cursor: -webkit-grab; cursor: -moz-grab; cursor: grab; } .leaflet-crosshair, .leaflet-crosshair .leaflet-interactive { cursor: crosshair; } .leaflet-popup-pane, .leaflet-control { cursor: auto; } .leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive, .leaflet-dragging .leaflet-marker-draggable { cursor: move; cursor: -webkit-grabbing; cursor: -moz-grabbing; cursor: grabbing; } .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none; } .leaflet-marker-icon.leaflet-interactive, .leaflet-image-layer.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive, svg.leaflet-image-layer.leaflet-interactive path { pointer-events: visiblePainted; pointer-events: auto; } .leaflet-container { background: #ddd; outline-offset: 1px; } .leaflet-container a { color: #0078A8; } .leaflet-zoom-box { border: 2px dotted #38f; background: rgba(255,255,255,0.5); } .leaflet-container { font-family: "Helvetica Neue", Arial, Helvetica, sans-serif; font-size: 12px; font-size: 0.75rem; line-height: 1.5; } .leaflet-bar { box-shadow: 0 1px 5px rgba(0,0,0,0.65); border-radius: 4px; } .leaflet-bar a { background-color: #fff; border-bottom: 1px solid #ccc; width: 26px; height: 26px; line-height: 26px; display: block; text-align: center; text-decoration: none; color: black; } .leaflet-bar a, .leaflet-control-layers-toggle { background-position: 50% 50%; background-repeat: no-repeat; display: block; } .leaflet-bar a:hover, .leaflet-bar a:focus { background-color: #f4f4f4; } .leaflet-bar a:first-child { border-top-left-radius: 4px; border-top-right-radius: 4px; } .leaflet-bar a:last-child { border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; border-bottom: none; } .leaflet-bar a.leaflet-disabled { cursor: default; background-color: #f4f4f4; color: #bbb; } .leaflet-touch .leaflet-bar a { width: 30px; height: 30px; line-height: 30px; } .leaflet-touch .leaflet-bar a:first-child { border-top-left-radius: 2px; border-top-right-radius: 2px; } .leaflet-touch .leaflet-bar a:last-child { border-bottom-left-radius: 2px; border-bottom-right-radius: 2px; } .leaflet-control-zoom-in, .leaflet-control-zoom-out { font: bold 18px 'Lucida Console', Monaco, monospace; text-indent: 1px; } .leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out { font-size: 22px; } .leaflet-control-layers { box-shadow: 0 1px 5px rgba(0,0,0,0.4); background: #fff; border-radius: 5px; } .leaflet-touch .leaflet-control-layers-toggle { width: 44px; height: 44px; } .leaflet-control-layers .leaflet-control-layers-list, .leaflet-control-layers-expanded .leaflet-control-layers-toggle { display: none; } .leaflet-control-layers-expanded .leaflet-control-layers-list { display: block; position: relative; } .leaflet-control-layers-expanded { padding: 6px 10px 6px 6px; color: #333; background: #fff; } .leaflet-control-layers-scrollbar { overflow-y: scroll; overflow-x: hidden; padding-right: 5px; } .leaflet-control-layers-selector { margin-top: 2px; position: relative; top: 1px; } .leaflet-control-layers label { display: block; font-size: 13px; font-size: 1.08333em; } .leaflet-control-layers-separator { height: 0; border-top: 1px solid #ddd; margin: 5px -10px 5px -6px; } .leaflet-container .leaflet-control-attribution { background: #fff; background: rgba(255, 255, 255, 0.8); margin: 0; } .leaflet-control-attribution, .leaflet-control-scale-line { padding: 0 5px; color: #333; line-height: 1.4; } .leaflet-control-attribution a { text-decoration: none; } .leaflet-control-attribution a:hover, .leaflet-control-attribution a:focus { text-decoration: underline; } .leaflet-attribution-flag { display: inline !important; vertical-align: baseline !important; width: 1em; height: 0.6669em; } .leaflet-left .leaflet-control-scale { margin-left: 5px; } .leaflet-bottom .leaflet-control-scale { margin-bottom: 5px; } .leaflet-control-scale-line { border: 2px solid #777; border-top: none; line-height: 1.1; padding: 2px 5px 1px; white-space: nowrap; -moz-box-sizing: border-box; box-sizing: border-box; background: rgba(255, 255, 255, 0.8); text-shadow: 1px 1px #fff; } .leaflet-control-scale-line:not(:first-child) { border-top: 2px solid #777; border-bottom: none; margin-top: -2px; } .leaflet-control-scale-line:not(:first-child):not(:last-child) { border-bottom: 2px solid #777; } .leaflet-touch .leaflet-control-attribution, .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { box-shadow: none; } .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { border: 2px solid rgba(0,0,0,0.2); background-clip: padding-box; } .leaflet-popup { position: absolute; text-align: center; margin-bottom: 20px; } .leaflet-popup-content-wrapper { padding: 1px; text-align: left; border-radius: 12px; } .leaflet-popup-content { margin: 13px 24px 13px 20px; line-height: 1.3; font-size: 13px; font-size: 1.08333em; min-height: 1px; } .leaflet-popup-content p { margin: 17px 0; margin: 1.3em 0; } .leaflet-popup-tip-container { width: 40px; height: 20px; position: absolute; left: 50%; margin-top: -1px; margin-left: -20px; overflow: hidden; pointer-events: none; } .leaflet-popup-tip { width: 17px; height: 17px; padding: 1px; margin: -10px auto 0; pointer-events: auto; -webkit-transform: rotate(45deg); -moz-transform: rotate(45deg); -ms-transform: rotate(45deg); transform: rotate(45deg); } .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: white; color: #333; box-shadow: 0 3px 14px rgba(0,0,0,0.4); } .leaflet-container a.leaflet-popup-close-button { position: absolute; top: 0; right: 0; border: none; text-align: center; width: 24px; height: 24px; font: 16px/24px Tahoma, Verdana, sans-serif; color: #757575; text-decoration: none; background: transparent; } .leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus { color: #585858; } .leaflet-popup-scrolled { overflow: auto; } .leaflet-oldie .leaflet-popup-content-wrapper { -ms-zoom: 1; } .leaflet-oldie .leaflet-popup-tip { width: 24px; margin: 0 auto; -ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)"; filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678); } .leaflet-oldie .leaflet-control-zoom, .leaflet-oldie .leaflet-control-layers, .leaflet-oldie .leaflet-popup-content-wrapper, .leaflet-oldie .leaflet-popup-tip { border: 1px solid #999; } .leaflet-div-icon { background: #fff; border: 1px solid #666; } .leaflet-tooltip { position: absolute; padding: 6px; background-color: #fff; border: 1px solid #fff; border-radius: 3px; color: #222; white-space: nowrap; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.4); } .leaflet-tooltip.leaflet-interactive { cursor: pointer; pointer-events: auto; } .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { position: absolute; pointer-events: none; border: 6px solid transparent; background: transparent; content: ""; } .leaflet-tooltip-bottom { margin-top: 6px; } .leaflet-tooltip-top { margin-top: -6px; } .leaflet-tooltip-bottom:before, .leaflet-tooltip-top:before { left: 50%; margin-left: -6px; } .leaflet-tooltip-top:before { bottom: 0; margin-bottom: -12px; border-top-color: #fff; } .leaflet-tooltip-bottom:before { top: 0; margin-top: -12px; margin-left: -6px; border-bottom-color: #fff; } .leaflet-tooltip-left { margin-left: -6px; } .leaflet-tooltip-right { margin-left: 6px; } .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { top: 50%; margin-top: -6px; } .leaflet-tooltip-left:before { right: 0; margin-right: -12px; border-left-color: #fff; } .leaflet-tooltip-right:before { left: 0; margin-left: -12px; border-right-color: #fff; } @media print { .leaflet-control { -webkit-print-color-adjust: exact; print-color-adjust: exact; } } 
+.leaflet-container{font-family:var(--f-body)}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--line)!important}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>구역 연면적 집계기</h1>
+    <p>지도에 구역을 그리거나 구역 GIS 파일을 넣으면, 그 안의 서울 필지를 찾아 필지수·주거 세대수·주거/비주거 연면적·용도지역별 면적을 계산해 엑셀로 드립니다. 넣은 파일은 이 컴퓨터 안에서만 처리되고 어디에도 올라가지 않습니다.</p>
+    <div class="ver"><span class="chip" id="verChip">자료 불러오는 중…</span><span class="chip">서울특별시만 계산</span></div>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <h2 id="s1"><span class="no">1</span>구역 정하기</h2>
+    <div class="maptools">
+      <input type="text" id="q" placeholder="예: 창신동 23-1" aria-label="동·지번 찾기">
+      <button class="btn sm ghost" id="qBtn">찾기</button>
+      <button class="btn sm" id="drawBtn">구역 그리기</button>
+      <span class="hits" id="hits"></span>
+    </div>
+    <div class="drawbar" id="drawBar" hidden>
+      <span id="drawMsg">지도를 눌러 구역 모서리를 차례로 찍으세요.</span>
+      <button class="btn sm" id="doneBtn" disabled>완료</button>
+      <button class="btn sm ghost" id="undoBtn" disabled>점 하나 지우기</button>
+      <button class="btn sm ghost" id="cancelBtn">그만두기</button>
+    </div>
+    <div id="map" aria-label="서울 지적도"></div>
+    <p class="hint">멀리서는 법정동 경계, 가까이 확대하면 필지선이 보입니다. 회색은 도로, 파란색은 하천입니다. 그린 구역과 넣은 파일의 구역은 초록색으로 표시됩니다.</p>
+    <div class="or">또는 GIS 파일 넣기</div>
+    <div id="drop" tabindex="0" role="button" aria-label="파일 선택">
+      <strong>파일을 여기에 끌어다 놓거나, 눌러서 고르세요</strong>
+      <span class="hint">SHP 묶음(.shp·.prj·.dbf·.shx), 그 묶음을 압축한 .zip, 또는 .gpkg 파일. 여러 개를 한 번에 넣어도 됩니다.</span>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".zip,.shp,.shx,.dbf,.prj,.cpg,.gpkg" hidden>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <h2 id="s2"><span class="no">2</span>분류 이름 확인</h2>
+    <p class="hint">엑셀의 '명칭' 칸에 들어갈 이름입니다. <b>이름이 같은 파일은 하나로 합쳐서</b> 계산합니다(예: '광역(단독)'과 '광역(일반)'을 둘 다 '광역'으로 하면 겹치는 땅은 한 번만 셉니다).</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>파일</th><th>분류 이름</th><th class="num">구역 수</th><th>좌표계</th><th></th></tr></thead>
+      <tbody id="layerRows"><tr><td colspan="5" class="hint">아직 넣은 파일이 없습니다.</td></tr></tbody>
+    </table></div>
+    <div class="row"><button class="btn" id="runBtn" disabled>계산하기</button><span id="runStatus" class="hint"></span></div>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <h2 id="s3"><span class="no">3</span>결과</h2>
+    <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 파일을 넣고 계산하면 바뀝니다</span></div>
+    <div class="tablebox"><table id="resultTable"></table></div>
+    <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><span id="dlStatus" class="hint"></span></div>
+    <details>
+      <summary>계산 기준</summary>
+      <ul id="basis"></ul>
+    </details>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+const BASIS = [
+  "필지·용도지역·필지면적: 브이월드 토지특성정보(2026-05-20). 필지면적은 토지대장 면적, 용도지역은 필지별 대표 용도지역(용도지역1).",
+  "건축물: 건축HUB 건축물대장 대용량 자료 표제부·층별개요·전유부(2026년 8월분).",
+  "구역에 포함되는 필지: 필지가 구역과 절반 이상 겹치면 포함(500㎡ 이상 필지는 필지 안 표본점의 절반 이상이 구역 안일 때, 그보다 작은 필지는 필지 안쪽 대표점이 구역 안일 때). 같은 분류 이름의 파일들은 하나의 구역으로 합쳐 계산(겹치는 땅은 한 번만).",
+  "총 면적: 구역 폴리곤을 합친 면적(도로 포함, GIS 계산값). 필지면적: 포함된 필지의 토지대장 면적 합.",
+  "주거: 단독주택·다가구·공동주택(아파트·연립·다세대·기숙사)·오피스텔. 그 외 용도는 비주거. 층별개요의 층별 용도로 나누고, 비주거 = 연면적 − 주거.",
+  "주거 세대수: 표제부 세대수·가구수 중 큰 값 + 오피스텔 호수(전유부 중 오피스텔 층의 호). 주거 층이 있는데 세대·가구가 0이면 1로 계산.",
+  "용도지역별 면적: 포함된 필지의 면적을 필지별 용도지역으로 묶어 더한 값(한 필지가 두 용도지역에 걸치면 대표 용도지역으로 전부 계산).",
+  "여러 필지에 걸친 건물은 건축물대장의 대표 지번 필지에만 잡힙니다.",
+];
+const ZONE_ORDER = ["일반상업지역","중심상업지역","근린상업지역","유통상업지역","제1종전용주거지역","제2종전용주거지역","제1종일반주거지역","제2종일반주거지역","제3종일반주거지역","준주거지역","전용공업지역","일반공업지역","준공업지역","보전녹지지역","생산녹지지역","자연녹지지역","개발제한구역"];
+const DEFS = {
+  "EPSG:5186":"+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs",
+  "EPSG:5181":"+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs",
+  "EPSG:5179":"+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs",
+  "EPSG:5174":"+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +units=m +no_defs +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43",
+  "EPSG:2097":"+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +units=m +no_defs +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43",
+  "EPSG:4326":"+proj=longlat +datum=WGS84 +no_defs",
+};
+const CRS_LABEL = {"EPSG:5186":"5186 중부원점(GRS80)","EPSG:5174":"5174 보정 중부원점(Bessel)","EPSG:5179":"5179 UTM-K","EPSG:5181":"5181 중부원점(GRS80, 50만)","EPSG:2097":"2097 중부원점(Bessel)","EPSG:4326":"4326 경위도"};
+for (const k in DEFS) proj4.defs(k, DEFS[k]);
+const SEOUL = [180000, 535000, 220000, 570000]; // EPSG:5186 대략 범위
+
+const $ = s => document.querySelector(s);
+const fmt = (v, d=0) => v == null ? "" : Number(v).toLocaleString("ko-KR", {maximumFractionDigits:d, minimumFractionDigits:d});
+let META = null; const CHUNK = new Map();
+let layers = []; // {id, file, layer, name, polys(원좌표), crs, crsAuto, crsNote}
+let results = null;
+
+/* ---------- 자료 */
+fetch("data/meta.json").then(r => r.json()).then(m => { META = m; $("#verChip").textContent = "자료 기준: " + m.version; })
+  .catch(() => { $("#verChip").textContent = "자료를 불러오지 못했습니다. 페이지를 새로고침하세요."; });
+async function fetchBin(u) { // base64(gzip) 텍스트 → ArrayBuffer
+  const bin = atob((await (await fetch(u)).text()).trim()); const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+}
+const CHUNK_P = new Map();
+function loadChunk(c) { if (!CHUNK_P.has(c.sgg)) CHUNK_P.set(c.sgg, loadChunkRaw(c)); return CHUNK_P.get(c.sgg); }
+async function loadChunkRaw(c) {
+  const [buf, sbuf] = await Promise.all([`data/p_${c.sgg}.txt`, `data/s_${c.sgg}.txt`].map(fetchBin));
+  const n = c.n;
+  // 큰 필지(500㎡ 이상)의 내부 표본점: 필지순번 → [시작, 개수]
+  const k = new Uint32Array(sbuf, 0, 1)[0], sIdx = new Uint32Array(sbuf, 4, k), sCnt = new Uint32Array(sbuf, 4 + 4*k, k);
+  const sPts = new Int32Array(sbuf, 4 + 8*k); const samp = new Map(); let o = 0;
+  for (let i = 0; i < k; i++) { samp.set(sIdx[i], [o, sCnt[i]]); o += sCnt[i]; }
+  const d = { n, x: new Int32Array(buf, 0, n), y: new Int32Array(buf, 4*n, n), area: new Float32Array(buf, 8*n, n),
+    res: new Float32Array(buf, 12*n, n), non: new Float32Array(buf, 16*n, n), units: new Uint32Array(buf, 20*n, n),
+    bjd: new Uint16Array(buf, 24*n, n), bun: new Uint16Array(buf, 26*n, n), ji: new Uint16Array(buf, 28*n, n),
+    san: new Uint8Array(buf, 30*n, n), zone: new Uint8Array(buf, 31*n, n), samp, sPts };
+  CHUNK.set(c.sgg, d); return d;
+}
+
+/* ---------- 도형 유틸 (ring = [[x,y],...]) */
+function ringArea(r){ let s=0; for(let i=0,j=r.length-1;i<r.length;j=i++) s += (r[j][0]*r[i][1]-r[i][0]*r[j][1]); return s/2; }
+function inRing(x,y,r){ let c=false; for(let i=0,j=r.length-1;i<r.length;j=i++){ const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];
+  if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; }
+function polyArea(p){ let a=Math.abs(ringArea(p[0])); for(let k=1;k<p.length;k++) a-=Math.abs(ringArea(p[k])); return a; }
+function bboxOf(polys){ let b=[Infinity,Infinity,-Infinity,-Infinity]; for(const p of polys) for(const pt of p[0]){ if(pt[0]<b[0])b[0]=pt[0]; if(pt[1]<b[1])b[1]=pt[1]; if(pt[0]>b[2])b[2]=pt[0]; if(pt[1]>b[3])b[3]=pt[1]; } return b; }
+function ringsToPolys(rings){ // SHP: 바깥 고리는 시계방향(면적<0), 구멍은 반시계
+  const outers=[], holes=[];
+  for(const r of rings){ if(r.length<4) continue; (ringArea(r)<0?outers:holes).push(r); }
+  if(!outers.length) return holes.map(r=>[r]);
+  const polys = outers.map(r=>[r]);
+  for(const h of holes){ const o = polys.find(p=>inRing(h[0][0],h[0][1],p[0])); if(o) o.push(h); else polys.push([h.slice().reverse()]); }
+  return polys;
+}
+
+/* ---------- SHP 읽기 */
+function parseShp(buf){
+  const dv = new DataView(buf); const polys=[]; let off=100;
+  while(off+8 <= buf.byteLength){
+    const len = dv.getInt32(off+4,false)*2; const c = off+8; off = c+len;
+    if(len<4) continue; const t = dv.getInt32(c,true);
+    if(![5,15,25].includes(t)) continue;
+    const np = dv.getInt32(c+36,true), npt = dv.getInt32(c+40,true);
+    const parts=[]; for(let i=0;i<np;i++) parts.push(dv.getInt32(c+44+4*i,true));
+    const p0 = c+44+4*np; const rings=[];
+    for(let i=0;i<np;i++){ const s=parts[i], e=i+1<np?parts[i+1]:npt; const r=[];
+      for(let k=s;k<e;k++) r.push([dv.getFloat64(p0+16*k,true), dv.getFloat64(p0+16*k+8,true)]); rings.push(r); }
+    polys.push(...ringsToPolys(rings));
+  }
+  return polys;
+}
+/* ---------- WKB / GPKG 읽기 */
+function parseWKB(dv, off){
+  const le = dv.getUint8(off)===1; let t = dv.getUint32(off+1,le); off+=5;
+  let dim=2; if(t&0x80000000) dim++; if(t&0x40000000) dim++; if(t&0x20000000){ off+=4; }
+  t &= 0x0fffffff; if(t>=3000){dim=4;t-=3000;} else if(t>=2000){dim=3;t-=2000;} else if(t>=1000){dim=3;t-=1000;}
+  const polys=[];
+  const readPoly=()=>{ const nr=dv.getUint32(off,le); off+=4; const p=[]; for(let i=0;i<nr;i++){ const n=dv.getUint32(off,le); off+=4; const r=[];
+      for(let k=0;k<n;k++){ r.push([dv.getFloat64(off,le), dv.getFloat64(off+8,le)]); off+=8*dim; } p.push(r);} return p; };
+  if(t===3) polys.push(readPoly());
+  else if(t===6||t===7){ const n=dv.getUint32(off,le); off+=4; for(let i=0;i<n;i++){ const r=parseWKB(dv,off); off=r.off; polys.push(...r.polys);} }
+  else if(t===1){ off+=8*dim; } else if(t===2){ const n=dv.getUint32(off,le); off+=4+8*dim*n; }
+  return {polys, off};
+}
+function gpkgGeom(bytes){
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if(bytes[0]!==0x47||bytes[1]!==0x50) return parseWKB(dv,0).polys;
+  const flags=bytes[3]; const env=[0,32,48,48,64][(flags>>1)&7]||0; if(flags&0x10) return [];
+  return parseWKB(dv, 8+env).polys;
+}
+let SQL=null;
+async function getSQL(){ if(SQL) return SQL;
+  await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-asm.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  SQL = await window.initSqlJs(); return SQL; }
+async function readGpkg(name, buf){
+  const S = await getSQL(); const db = new S.Database(new Uint8Array(buf)); const out=[];
+  const q = db.exec("select g.table_name, g.column_name, g.srs_id, s.organization, s.organization_coordsys_id, s.definition from gpkg_geometry_columns g left join gpkg_spatial_ref_sys s on s.srs_id=g.srs_id");
+  for(const row of (q[0]?q[0].values:[])){
+    const [tbl,col,srs,org,code,def]=row; const polys=[];
+    const r = db.exec(`select "${col}" from "${tbl}"`);
+    for(const v of (r[0]?r[0].values:[])) if(v[0]) polys.push(...gpkgGeom(v[0]));
+    const epsg = (String(org||"").toUpperCase()==="EPSG" && DEFS["EPSG:"+code]) ? "EPSG:"+code : null;
+    out.push({file:name, layer:tbl, polys, wkt: epsg?null:def, epsg});
+  }
+  db.close(); return out;
+}
+
+/* ---------- 좌표계 판별 */
+function crsFromWkt(w){
+  if(!w) return null; const s=w.toLowerCase();
+  const num = re => { const m = s.match(re); return m?parseFloat(m[1]):null; };
+  if(!/projcs|projcrs/.test(s)) return /geogcs|geogcrs/.test(s) ? "EPSG:4326" : null;
+  const lon0 = num(/central_meridian"?\s*,\s*([-\d.]+)/) ?? num(/longitude of natural origin"?\s*,\s*([-\d.]+)/);
+  const fe = num(/false_easting"?\s*,\s*([-\d.]+)/) ?? num(/false easting"?\s*,\s*([-\d.]+)/);
+  const fn = num(/false_northing"?\s*,\s*([-\d.]+)/) ?? num(/false northing"?\s*,\s*([-\d.]+)/);
+  const bessel = /bessel|tokyo/.test(s);
+  const near=(a,b,t=1e-3)=>a!=null&&Math.abs(a-b)<t;
+  if(bessel && near(lon0,127.0028902777778) && near(fn,500000,1)) return "EPSG:5174";
+  if(bessel && near(lon0,127) && near(fn,500000,1)) return "EPSG:2097";
+  if(!bessel && near(lon0,127) && near(fn,600000,1)) return "EPSG:5186";
+  if(!bessel && near(lon0,127) && near(fn,500000,1)) return "EPSG:5181";
+  if(!bessel && near(lon0,127.5) && near(fe,1000000,1) && near(fn,2000000,1)) return "EPSG:5179";
+  try { proj4.defs("CUSTOM:"+w.length, w); return "CUSTOM:"+w.length; } catch(e){ return null; }
+}
+function crsGuess(polys){
+  const b=bboxOf(polys);
+  if(Math.abs(b[0])<=180 && Math.abs(b[1])<=90) return ["EPSG:4326","좌표값으로 추정"];
+  if(b[0]>800000 && b[1]>1800000) return ["EPSG:5179","좌표값으로 추정"];
+  if(b[1]>=520000) return ["EPSG:5186","좌표값으로 추정"];
+  if(b[1]>=400000) return ["EPSG:5174","좌표값으로 추정 — 5181일 수도 있으니 확인"];
+  return [null,"판별 못 함"];
+}
+function toSeoul(polys, crs){
+  if(crs==="EPSG:5186") return polys;
+  const tr = proj4(crs, "EPSG:5186");
+  return polys.map(p=>p.map(r=>r.map(pt=>tr.forward([pt[0],pt[1]]))));
+}
+
+/* ---------- 파일 받기 */
+const drop=$("#drop"), fileInput=$("#fileInput");
+drop.addEventListener("click",()=>fileInput.click());
+drop.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileInput.click(); }});
+drop.addEventListener("dragover",e=>{ e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave",()=>drop.classList.remove("over"));
+drop.addEventListener("drop",e=>{ e.preventDefault(); drop.classList.remove("over"); addFiles([...e.dataTransfer.files]); });
+fileInput.addEventListener("change",()=>{ addFiles([...fileInput.files]); fileInput.value=""; });
+
+let seq=0;
+async function addFiles(files){
+  setRun("파일 읽는 중…");
+  const entries=[]; // {name, ext, data: ArrayBuffer|string}
+  try{
+    for(const f of files){
+      const ext=f.name.split(".").pop().toLowerCase();
+      if(ext==="zip"){ const z=await JSZip.loadAsync(await f.arrayBuffer());
+        for(const zn of Object.keys(z.files)){ const zf=z.files[zn]; if(zf.dir) continue; const e2=zn.split(".").pop().toLowerCase();
+          if(["shp","prj","gpkg"].includes(e2)) entries.push({name:zn.split("/").pop(), ext:e2, data: e2==="prj"? await zf.async("string") : await zf.async("arraybuffer")}); } }
+      else if(["shp","prj","gpkg"].includes(ext)) entries.push({name:f.name, ext, data: ext==="prj"? await f.text() : await f.arrayBuffer()});
+    }
+    const base = n => n.replace(/\.[^.]+$/,"");
+    const prjs = new Map(entries.filter(e=>e.ext==="prj").map(e=>[base(e.name).toLowerCase(), e.data]));
+    const found=[];
+    for(const e of entries){
+      if(e.ext==="shp") found.push({file:e.name, layer:null, polys:parseShp(e.data), wkt:prjs.get(base(e.name).toLowerCase())||null, epsg:null});
+      if(e.ext==="gpkg") found.push(...await readGpkg(e.name, e.data));
+    }
+    if(!found.length){ setRun("SHP나 GPKG 파일을 찾지 못했습니다. .shp 파일(또는 압축한 .zip, .gpkg)을 넣어주세요.","err"); return; }
+    for(const L of found){
+      let crs=L.epsg, note=L.epsg?"파일에 적힌 좌표계":null;
+      if(!crs && L.wkt){ crs=crsFromWkt(L.wkt); note=crs?"파일에 적힌 좌표계":null; }
+      if(!crs){ const g=crsGuess(L.polys); crs=g[0]; note=(L.wkt?"좌표계 정보를 못 읽어 ":"좌표계 파일(.prj)이 없어 ")+g[1]; }
+      const nm = base(L.layer && found.filter(x=>x.file===L.file).length>1 ? L.layer : L.file);
+      layers.push({id:++seq, file:L.file+(L.layer&&L.layer!==base(L.file)?` › ${L.layer}`:""), name:nm, polys:L.polys, crs, note});
+    }
+    renderLayers(); fitToLayers(layers.slice(-found.length)); setRun(`${found.length}개 레이어를 읽었습니다. 지도에서 위치를 확인하고, 분류 이름을 정한 뒤 계산하기를 누르세요.`);
+  }catch(err){ console.error(err); setRun("파일을 읽다가 문제가 생겼습니다: "+(err.message||err),"err"); }
+}
+function crsOptions(sel){
+  const opts = Object.keys(CRS_LABEL).map(k=>`<option value="${k}" ${k===sel?"selected":""}>${CRS_LABEL[k]}</option>`).join("");
+  return (sel && !CRS_LABEL[sel] ? `<option value="${sel}" selected>파일의 좌표계</option>` : "") + (sel?"":`<option value="" selected>골라주세요</option>`) + opts;
+}
+function renderLayers(){
+  const tb=$("#layerRows");
+  if(!layers.length){ tb.innerHTML=`<tr><td colspan="5" class="hint">아직 넣은 파일이 없습니다.</td></tr>`; $("#runBtn").disabled=true; return; }
+  tb.innerHTML="";
+  for(const L of layers){
+    const tr=document.createElement("tr");
+    const warn = !L.note || !L.note.startsWith("파일에");
+    tr.innerHTML = `<td style="white-space:normal;min-width:12ch">${esc(L.file)}</td>
+      <td><input type="text" class="name" id="nm${L.id}" value="${esc(L.name)}" aria-label="분류 이름"></td>
+      <td class="num">${fmt(L.polys.length)}</td>
+      <td><select id="crs${L.id}" aria-label="좌표계">${crsOptions(L.crs)}</select> <span class="tag ${warn?"warn":""}">${esc(L.note||"")}</span></td>
+      <td><button class="rm" aria-label="이 파일 빼기" data-id="${L.id}">×</button></td>`;
+    tb.appendChild(tr);
+    tr.querySelector("input").addEventListener("input",e=>{ L.name=e.target.value; });
+    tr.querySelector("select").addEventListener("change",e=>{ L.crs=e.target.value; L.note="직접 고름"; renderLayers(); });
+    tr.querySelector(".rm").addEventListener("click",()=>{ layers=layers.filter(x=>x.id!==L.id); renderLayers(); });
+  }
+  $("#runBtn").disabled = !layers.length;
+  drawOverlays();
+}
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function setRun(msg, kind){ const el=$("#runStatus"); el.textContent=msg; el.className = kind? "status "+(kind==="err"?"err":"warn") : "hint"; }
+
+/* ---------- 계산 */
+$("#runBtn").addEventListener("click", run);
+async function run(){
+  if(!META){ setRun("자료를 아직 불러오지 못했습니다. 잠시 후 다시 눌러주세요.","warn"); return; }
+  const bad = layers.filter(L=>!L.crs); if(bad.length){ setRun("좌표계를 골라야 하는 파일이 있습니다: "+bad.map(b=>b.file).join(", "),"err"); return; }
+  $("#runBtn").disabled=true;
+  try{
+    const groups=new Map();
+    for(const L of layers){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
+    const out=[]; const warns=[]; let gi=0;
+    for(const [name, Ls] of groups){
+      gi++; setRun(`계산 중… (${gi}/${groups.size}) ${name}`); await new Promise(r=>setTimeout(r,20));
+      let polys=[]; for(const L of Ls) polys.push(...toSeoul(L.polys, L.crs));
+      polys = polys.filter(p=>p[0]&&p[0].length>=4);
+      const bb=bboxOf(polys);
+      if(!(bb[2]>SEOUL[0]&&bb[0]<SEOUL[2]&&bb[3]>SEOUL[1]&&bb[1]<SEOUL[3])) warns.push(`'${name}' 구역이 서울 범위 밖에 있습니다. 좌표계를 확인하세요.`);
+      // 합치기(겹친 부분 한 번만)
+      let merged;
+      try { merged = polygonClipping.union(...polys.map(p=>[p])); }
+      catch(e){ merged = polys; warns.push(`'${name}' 구역을 합치지 못해 겹친 면적이 중복됐을 수 있습니다.`); }
+      const total = merged.reduce((s,p)=>s+polyArea(p),0);
+      const mp = merged.map(p=>({p, b:bboxOf([p])}));
+      const gb = bboxOf(merged);
+      const acc={n:0, area:0, res:0, non:0, units:0, zone:{}}; const plist=[];
+      for(const c of META.chunks){
+        if(c.bbox[2]<gb[0]||c.bbox[0]>gb[2]||c.bbox[3]<gb[1]||c.bbox[1]>gb[3]) continue;
+        const d = await loadChunk(c);
+        const x0=gb[0]*10,x1=gb[2]*10,y0=gb[1]*10,y1=gb[3]*10;
+        const inMerged=(x,y)=>{ for(const q of mp){ if(x<q.b[0]||x>q.b[2]||y<q.b[1]||y>q.b[3]) continue;
+            if(inRing(x,y,q.p[0])){ let h=false; for(let k=1;k<q.p.length;k++) if(inRing(x,y,q.p[k])){h=true;break;} if(!h) return true; } } return false; };
+        const pad=2000; // 큰 필지는 대표점이 구역 밖이어도 일부가 걸칠 수 있어 범위를 넓게 봄(0.1m 단위)
+        for(let i=0;i<d.n;i++){
+          const xi=d.x[i], yi=d.y[i]; if(xi<x0-pad||xi>x1+pad||yi<y0-pad||yi>y1+pad) continue;
+          const s=d.samp.get(i); let inside;
+          if(s){ let hit=0; for(let k=0;k<s[1];k++){ const j=2*(s[0]+k); if(inMerged(d.sPts[j]/10, d.sPts[j+1]/10)) hit++; } inside = hit*2 >= s[1]; }
+          else { if(xi<x0||xi>x1||yi<y0||yi>y1) continue; inside = inMerged(xi/10, yi/10); }
+          if(!inside) continue;
+          const z=META.zones[d.zone[i]];
+          acc.n++; acc.area+=d.area[i]; acc.res+=d.res[i]; acc.non+=d.non[i]; acc.units+=d.units[i]; acc.zone[z]=(acc.zone[z]||0)+d.area[i];
+          const bjd=META.bjd[d.bjd[i]];
+          plist.push([name, bjd[0]+(d.san[i]?"2":"1")+String(d.bun[i]).padStart(4,"0")+String(d.ji[i]).padStart(4,"0"),
+            `${bjd[1]} ${d.san[i]?"산":""}${d.bun[i]}${d.ji[i]?"-"+d.ji[i]:""}`, round1(d.area[i]), z, round1(d.res[i]), round1(d.non[i]), d.units[i]]);
+        }
+      }
+      out.push({name, files:Ls.map(L=>L.file), total, ...acc, plist});
+    }
+    results={rows:out, warns};
+    renderResults();
+    setRun(`계산을 마쳤습니다. 분류 ${out.length}개, 필지 ${fmt(out.reduce((s,r)=>s+r.n,0))}개.`, warns.length?"warn":null);
+    if(warns.length) setRun(warns.join(" / "),"warn");
+  }catch(err){ console.error(err); setRun("계산하다가 문제가 생겼습니다: "+(err.message||err),"err"); }
+  $("#runBtn").disabled=false;
+}
+const round1 = v => Math.round(v*10)/10;
+
+/* ---------- 결과 표 */
+function zoneCols(rows){
+  const present=new Set(); rows.forEach(r=>Object.keys(r.zone).forEach(z=>{ if(r.zone[z]>0) present.add(z); }));
+  const cols = ["일반상업지역", ...ZONE_ORDER.slice(1).filter(z=>present.has(z))];
+  [...present].filter(z=>!ZONE_ORDER.includes(z)).sort().forEach(z=>cols.push(z));
+  return cols;
+}
+const SAMPLE = [ // 예시: 성장잠재권형 '도심주변'·'광역' 계산값(참고용)
+  {name:"도심주변", total:1709361, n:7661, area:1546071, units:20389, res:1323105, non:1873368, zone:{"일반상업지역":274866,"제2종일반주거지역":0}},
+  {name:"광역", total:288217, n:763, area:260428, units:1967, res:102280, non:82994, zone:{"일반상업지역":23671}},
+];
+function renderResults(){
+  const rows = results ? results.rows : SAMPLE;
+  $("#sampleBadge").hidden = !!results;
+  const zc = results ? zoneCols(rows) : ["일반상업지역"];
+  const t=$("#resultTable");
+  t.innerHTML = `<thead><tr><th rowspan="2">명칭</th><th rowspan="2" class="num">총 면적(㎡)</th><th rowspan="2" class="num">필지수</th><th rowspan="2" class="num">필지면적(㎡)</th>
+    <th rowspan="2" class="num">주거 세대수</th><th rowspan="2" class="num">주거연면적(㎡)</th><th rowspan="2" class="num">비주거연면적(㎡)</th>
+    <th colspan="${zc.length}" class="zone-group">용도지역별 면적(㎡)</th></tr>
+    <tr>${zc.map((z,i)=>`<th class="num ${i===0?"gs":""}">${esc(z)}</th>`).join("")}</tr></thead>
+    <tbody class="${results?"":"sample"}">${rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num">${fmt(r.total)}</td><td class="num">${fmt(r.n)}</td><td class="num">${fmt(r.area)}</td>
+    <td class="num">${fmt(r.units)}</td><td class="num">${fmt(r.res)}</td><td class="num">${fmt(r.non)}</td>
+    ${zc.map((z,i)=>`<td class="num ${i===0?"gs":""}">${fmt(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  $("#xlsxBtn").disabled = !results;
+}
+
+/* ---------- 엑셀 */
+function buildWorkbook(){
+  const rows=results.rows, zc=zoneCols(rows);
+  const head1=["명칭","총 면적(㎡)","필지수","필지면적(㎡)","주거 세대수","주거연면적(㎡)","비주거연면적(㎡)","용도지역별 면적(㎡)",...Array(zc.length-1).fill(null)];
+  const head2=[null,null,null,null,null,null,null,...zc];
+  const body=rows.map(r=>[r.name, Math.round(r.total), r.n, Math.round(r.area), r.units, Math.round(r.res), Math.round(r.non), ...zc.map(z=>Math.round(r.zone[z]||0))]);
+  const ws=XLSX.utils.aoa_to_sheet([head1,head2,...body]);
+  ws["!merges"]=[0,1,2,3,4,5,6].map(c=>({s:{r:0,c},e:{r:1,c}})).concat(zc.length>1?[{s:{r:0,c:7},e:{r:0,c:6+zc.length}}]:[]);
+  ws["!cols"]=[{wch:18},{wch:14},{wch:9},{wch:14},{wch:11},{wch:15},{wch:15},...zc.map(()=>({wch:16}))];
+  for(let r=2;r<2+body.length;r++) for(let c=1;c<head1.length;c++){ const a=XLSX.utils.encode_cell({r,c}); if(ws[a]) ws[a].z="#,##0"; }
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "집계");
+  const pl=[["분류","PNU","주소","필지면적(㎡)","용도지역","주거연면적(㎡)","비주거연면적(㎡)","주거 세대수"]];
+  rows.forEach(r=>pl.push(...r.plist));
+  const ws2=XLSX.utils.aoa_to_sheet(pl); ws2["!cols"]=[{wch:14},{wch:21},{wch:32},{wch:12},{wch:18},{wch:14},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws2, "필지목록");
+  const bs=[["계산 기준"],[`자료: ${META.version}`],[`계산일: ${new Date().toLocaleDateString("ko-KR")}`],...BASIS.map(b=>["- "+b]),
+    ...rows.map(r=>[`- '${r.name}' 구역 파일: ${r.files.join(", ")}`]), ...results.warns.map(w=>["! "+w])];
+  const ws3=XLSX.utils.aoa_to_sheet(bs); ws3["!cols"]=[{wch:130}]; XLSX.utils.book_append_sheet(wb, ws3, "기준");
+  return XLSX.write(wb,{bookType:"xlsx",type:"array"});
+}
+let downloads=null;
+(async()=>{ try{ downloads = window.claude && window.claude.use ? await window.claude.use("downloads") : null; }catch(e){ downloads=null; } })();
+$("#xlsxBtn").addEventListener("click", async()=>{
+  if(!results) return;
+  const data=buildWorkbook(); const fname=`구역집계_${new Date().toISOString().slice(0,10)}.xlsx`; const st=$("#dlStatus");
+  if(downloads){
+    try{ const r=await downloads.save({filename:fname, data:new Blob([data])}); st.textContent = r.status==="saved" ? "엑셀 파일을 저장했습니다." : "파일을 보냈습니다."; }
+    catch(e){ st.textContent = e && e.code==="declined" ? "저장을 취소했습니다. 다시 누르면 받을 수 있습니다." : "이 화면에서는 저장할 수 없습니다. claude.ai에서 페이지를 열어 다시 시도하세요."; }
+  } else if(!(window.claude)){ // 바깥에서 파일로 연 경우
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data])); a.download=fname; a.click(); st.textContent="엑셀 파일을 저장했습니다.";
+  } else st.textContent = "이 화면에서는 저장할 수 없습니다. claude.ai에서 페이지를 열어 다시 시도하세요.";
+});
+
+/* ---------- 지도 (외부 지도 타일 없이 지적도를 직접 그림, 좌표 = EPSG:5186 미터) */
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CRS5186 = L.extend({}, L.CRS.Simple, { transformation: new L.Transformation(1, -180000, -1, 570000) });
+// 애니메이션 끔: claude.ai 안(다른 출처 iframe)에서는 사용자가 누르기 전까지 브라우저가 화면 갱신(requestAnimationFrame)을
+// 멈춰 둘 수 있어, 서서히 나타나는 타일·확대 애니메이션에 의존하면 지도가 안 보인다.
+const map = L.map("map", { crs: CRS5186, minZoom: -7, maxZoom: 3, zoomSnap: 0.5, attributionControl: false, doubleClickZoom: false,
+  fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, inertia: false })
+  .setView([551000, 199000], -5.5);
+setTimeout(() => map.invalidateSize(false), 300);
+const LL = (x, y) => L.latLng(y, x);
+const PARCEL_Z = -1;          // 이 배율부터 필지선 표시
+const GEO = new Map();
+function loadGeo(c){
+  if (GEO.has(c.sgg)) return GEO.get(c.sgg);
+  const p = (async () => {
+    const buf = await fetchBin(`data/g_${c.sgg}.txt`); const dv = new DataView(buf);
+    const n = dv.getUint32(0, true); const kind = new Uint8Array(buf.slice(4, 4 + n)); let o = 4 + n;
+    const rings = new Array(n), bb = new Float64Array(4 * n);
+    for (let i = 0; i < n; i++) {
+      let nv = dv.getUint16(o, true); o += 2; const wide = nv & 0x8000; nv &= 0x7fff;
+      const r = new Float64Array(2 * nv);
+      if (wide) { for (let k = 0; k < nv; k++) { r[2*k] = dv.getInt32(o, true) / 10; r[2*k+1] = dv.getInt32(o + 4, true) / 10; o += 8; } }
+      else { let x = dv.getInt32(o, true), y = dv.getInt32(o + 4, true); o += 8; r[0] = x / 10; r[1] = y / 10;
+        for (let k = 1; k < nv; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; r[2*k] = x / 10; r[2*k+1] = y / 10; } }
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let k = 0; k < nv; k++) { const x = r[2*k], y = r[2*k+1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      rings[i] = r; bb[4*i] = x0; bb[4*i+1] = y0; bb[4*i+2] = x1; bb[4*i+3] = y1;
+    }
+    const G = 250, cells = new Map();   // 250m 격자 색인
+    for (let i = 0; i < n; i++) {
+      for (let gx = Math.floor(bb[4*i] / G); gx <= Math.floor(bb[4*i+2] / G); gx++)
+        for (let gy = Math.floor(bb[4*i+1] / G); gy <= Math.floor(bb[4*i+3] / G); gy++) {
+          const key = gx * 100000 + gy; let a = cells.get(key); if (!a) cells.set(key, a = []); a.push(i); }
+    }
+    return { n, kind, rings, bb, cells, G };
+  })();
+  GEO.set(c.sgg, p); return p;
+}
+let DONG = null;
+fetchBin("data/dong.txt").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); base.redraw(); }).catch(() => {});
+
+const BaseLayer = L.GridLayer.extend({
+  createTile(coords, done) {
+    const tile = document.createElement("canvas"); const T = 256; tile.width = T; tile.height = T;
+    const s = Math.pow(2, coords.z), tx0 = coords.x * T / s + 180000, ty1 = 570000 - coords.y * T / s;
+    const tx1 = tx0 + T / s, ty0 = ty1 - T / s;
+    const ctx = tile.getContext("2d");
+    const P = (x, y) => [(x - tx0) * s, (ty1 - y) * s];
+    const draw = async () => {
+      const ink = css("--ink"), line = css("--line"), muted = css("--muted");
+      if (coords.z >= PARCEL_Z && META) {
+        const pad = 5;
+        for (const c of META.chunks) {
+          if (c.bbox[2] < tx0 - pad || c.bbox[0] > tx1 + pad || c.bbox[3] < ty0 - pad || c.bbox[1] > ty1 + pad) continue;
+          const g = await loadGeo(c); const seen = new Set();
+          for (let gx = Math.floor(tx0 / g.G); gx <= Math.floor(tx1 / g.G); gx++)
+            for (let gy = Math.floor(ty0 / g.G); gy <= Math.floor(ty1 / g.G); gy++) {
+              const a = g.cells.get(gx * 100000 + gy); if (!a) continue;
+              for (const i of a) {
+                if (seen.has(i)) continue; seen.add(i);
+                if (g.bb[4*i+2] < tx0 || g.bb[4*i] > tx1 || g.bb[4*i+3] < ty0 || g.bb[4*i+1] > ty1) continue;
+                const r = g.rings[i]; ctx.beginPath();
+                for (let k = 0; k < r.length; k += 2) { const p = P(r[k], r[k+1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+                ctx.closePath();
+                const kd = g.kind[i];
+                if (kd) { ctx.fillStyle = kd === 1 ? "rgba(128,128,128,.28)" : kd === 2 ? "rgba(70,130,200,.28)" : "rgba(120,100,80,.25)"; ctx.fill(); }
+                ctx.strokeStyle = muted; ctx.globalAlpha = coords.z >= 1 ? .7 : .45; ctx.lineWidth = .6; ctx.stroke(); ctx.globalAlpha = 1;
+              }
+            }
+        }
+      }
+      if (DONG) {
+        ctx.strokeStyle = ink; ctx.globalAlpha = coords.z >= PARCEL_Z ? .55 : .35; ctx.lineWidth = coords.z >= PARCEL_Z ? 1.4 : .8;
+        for (const d of DONG) for (const ring of d[3]) {
+          let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+          for (const q of ring) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+          if (x1 < tx0 || x0 > tx1 || y1 < ty0 || y0 > ty1) continue;
+          ctx.beginPath(); ring.forEach((q, k) => { const p = P(q[0], q[1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        if (coords.z >= -4) {
+          ctx.font = `${coords.z >= PARCEL_Z ? 13 : 11}px ${css("--f-body")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = css("--bg"); ctx.fillStyle = ink;
+          const m = 80 / s;
+          for (const d of DONG) { if (!d[2]) continue; const [x, y] = d[2];
+            if (x < tx0 - m || x > tx1 + m || y < ty0 - m || y > ty1 + m) continue;
+            const p = P(x, y); ctx.strokeText(d[1], p[0], p[1]); ctx.fillText(d[1], p[0], p[1]); }
+        }
+      }
+    };
+    draw().then(() => done(null, tile)).catch(e => { console.error(e); done(null, tile); });
+    return tile;
+  }
+});
+const base = new BaseLayer({ tileSize: 256, updateWhenZooming: false, keepBuffer: 1 }).addTo(map);
+const overlay = L.layerGroup().addTo(map);
+function drawOverlays() {
+  overlay.clearLayers(); const col = css("--accent");
+  for (const L0 of layers) {
+    let polys; try { polys = toSeoul(L0.polys, L0.crs); } catch (e) { continue; }
+    for (const p of polys) L.polygon(p.map(r => r.map(q => LL(q[0], q[1]))), { color: col, weight: 2, fillOpacity: .15, interactive: false }).addTo(overlay);
+  }
+}
+function fitToLayers(ls) {
+  const all = []; for (const L0 of ls) { try { all.push(...toSeoul(L0.polys, L0.crs)); } catch (e) {} }
+  if (!all.length) return; const b = bboxOf(all);
+  map.fitBounds([LL(b[0], b[1]), LL(b[2], b[3])], { padding: [20, 20], maxZoom: 1, animate: false });
+}
+
+/* 그리기 */
+let drawing = null; // {pts:[[x,y]], line, marks}
+const drawLayer = L.layerGroup().addTo(map);
+function drawRefresh() {
+  drawLayer.clearLayers(); if (!drawing) return; const col = css("--accent");
+  const ll = drawing.pts.map(p => LL(p[0], p[1]));
+  if (ll.length >= 2) L.polyline(ll.concat(ll.length >= 3 ? [ll[0]] : []), { color: col, weight: 2, dashArray: "6 4", interactive: false }).addTo(drawLayer);
+  ll.forEach((q, i) => L.circleMarker(q, { radius: i ? 4 : 6, color: col, weight: 2, fillColor: css("--panel"), fillOpacity: 1, interactive: false }).addTo(drawLayer));
+  $("#doneBtn").disabled = drawing.pts.length < 3; $("#undoBtn").disabled = !drawing.pts.length;
+  $("#drawMsg").textContent = drawing.pts.length < 3 ? `지도를 눌러 구역 모서리를 차례로 찍으세요. (${drawing.pts.length}개 찍음, 3개 이상 필요)` : `${drawing.pts.length}개 찍음. 다 찍었으면 '완료'를 누르세요.`;
+}
+function setDrawing(on) {
+  drawing = on ? { pts: [] } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on;
+  $("#map").classList.toggle("drawing", on); drawRefresh();
+}
+$("#drawBtn").addEventListener("click", () => setDrawing(true));
+$("#cancelBtn").addEventListener("click", () => setDrawing(false));
+$("#undoBtn").addEventListener("click", () => { drawing.pts.pop(); drawRefresh(); });
+map.on("click", e => { if (!drawing) return; drawing.pts.push([e.latlng.lng, e.latlng.lat]); drawRefresh(); });
+let drawnNo = 0;
+$("#doneBtn").addEventListener("click", () => {
+  const ring = drawing.pts.slice(); ring.push(ring[0]);
+  if (ringArea(ring) > 0) ring.reverse(); // 바깥 고리는 시계방향으로 통일
+  drawnNo++;
+  layers.push({ id: ++seq, file: `지도에서 그린 구역 ${drawnNo}`, name: `구역 ${drawnNo}`, polys: [[ring]], crs: "EPSG:5186", note: "지도에서 그림" });
+  setDrawing(false); renderLayers();
+  setRun(`구역 ${drawnNo}을 추가했습니다(면적 약 ${fmt(Math.abs(ringArea(ring)))}㎡). 더 그리거나, 분류 이름을 정한 뒤 계산하기를 누르세요.`);
+});
+
+/* 찾기: '동 이름 + 지번' */
+async function findParcel() {
+  const q = $("#q").value.trim(); const hits = $("#hits"); hits.innerHTML = "";
+  if (!q || !META) return;
+  const m = q.match(/^(.*?)\s*(산\s*)?(\d+)(?:-(\d+))?\s*$/);
+  const words = (m ? m[1] : q).split(/\s+/).filter(Boolean);
+  const cands = META.bjd.map((b, i) => [b, i]).filter(([b]) => words.every(w => b[1].includes(w)));
+  if (!cands.length) { setRun(`'${q}'에 맞는 동을 찾지 못했습니다. 예: 창신동 23-1`, "warn"); return; }
+  const exact = cands.filter(([b]) => words.length && b[1].endsWith(words[words.length - 1]));
+  const list = exact.length ? exact : cands;
+  if (list.length > 1) {
+    list.slice(0, 12).forEach(([b, i]) => { const bt = document.createElement("button"); bt.textContent = b[1].replace("서울특별시 ", "");
+      bt.addEventListener("click", () => goTo(i, m)); hits.appendChild(bt); });
+    setRun(`같은 이름의 동이 ${list.length}곳 있습니다. 위에서 고르세요.`); return;
+  }
+  goTo(list[0][1], m);
+}
+async function goTo(bi, m) {
+  $("#hits").innerHTML = "";
+  const b = META.bjd[bi]; const c = META.chunks.find(c => c.sgg === b[0].slice(0, 5));
+  const dong = DONG && DONG.find(d => d[0] === bi);
+  if (!m || !m[3] || !c) { if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false }); return; }
+  const d = await loadChunk(c); const bun = +m[3], ji = m[4] ? +m[4] : 0, san = m[2] ? 1 : 0;
+  for (let i = 0; i < d.n; i++) if (d.bjd[i] === bi && d.bun[i] === bun && d.ji[i] === ji && d.san[i] === san) {
+    map.setView(LL(d.x[i] / 10, d.y[i] / 10), 1.5, { animate: false });
+    const g = await loadGeo(c); const r = g.rings[i]; const ll = []; for (let k = 0; k < r.length; k += 2) ll.push(LL(r[k], r[k+1]));
+    const hl = L.polygon(ll, { color: css("--warn"), weight: 3, fill: false, interactive: false }).addTo(map); setTimeout(() => map.removeLayer(hl), 6000);
+    setRun(`${b[1]} ${san ? "산" : ""}${bun}${ji ? "-" + ji : ""}로 이동했습니다.`); return;
+  }
+  if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false });
+  setRun(`${b[1]}에서 ${m[3]}${m[4] ? "-" + m[4] : ""} 필지를 찾지 못해 동으로 이동했습니다.`, "warn");
+}
+$("#qBtn").addEventListener("click", findParcel);
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter") findParcel(); });
+
+$("#basis").innerHTML = BASIS.map(b=>`<li>${esc(b)}</li>`).join("");
+renderResults();
+</script>
+
+</body></html>
