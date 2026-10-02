@@ -72,6 +72,10 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 #drop{padding:18px 16px}
 .hits{display:flex;gap:6px;flex-wrap:wrap}
+.popbox{display:flex;flex-direction:column;gap:6px;max-width:720px}
+.pophead{font-size:13px;font-weight:600;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.pophead .hint{font-weight:400;font-size:12px}
+#popTable th,#popTable td{padding:5px 10px;font-size:12.5px}
 .zones{display:flex;gap:8px;flex-wrap:wrap}
 .zones:empty{display:none}
 .zchip{display:inline-flex;align-items:center;gap:8px;padding:4px 4px 4px 10px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);font-size:13px}
@@ -137,6 +141,10 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     <h2 id="s3"><span class="no">2</span>결과</h2>
     <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div class="tablebox"><table id="resultTable"></table></div>
+    <div class="popbox" id="popBox" hidden>
+      <div class="pophead">참고 · 추정 인구 <span class="hint">구역에 통째로 들어온 집계구는 2024년 실측 인구, 나머지는 세대수 × 집계구 평균가구원수</span></div>
+      <div class="tablebox"><table id="popTable"></table></div>
+    </div>
     <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><span id="dlStatus" class="hint"></span></div>
     <details>
       <summary>계산 기준</summary>
@@ -161,6 +169,7 @@ const BASIS = [
   "주거 세대수: 표제부 세대수·가구수 중 큰 값 + 오피스텔 호수(전유부 중 오피스텔 층의 호). 주거 층이 있는데 세대·가구가 0이면 1로 계산.",
   "용도지역별 면적: 포함된 필지의 면적을 필지별 용도지역으로 묶어 더한 값(한 필지가 두 용도지역에 걸치면 대표 용도지역으로 전부 계산).",
   "여러 필지에 걸친 건물은 건축물대장의 대표 지번 필지에만 잡힙니다.",
+  "참고 인구: 구역에 필지면적 95% 이상이 들어온 집계구는 2024년 실측 총인구(통계청 SGIS), 나머지는 주거 세대수 × 그 집계구 평균가구원수로 추정. 세대수(2026)와 실측(2024)의 시점이 다릅니다.",
 ];
 const ZONE_ORDER = ["일반상업지역","중심상업지역","근린상업지역","유통상업지역","제1종전용주거지역","제2종전용주거지역","제1종일반주거지역","제2종일반주거지역","제3종일반주거지역","준주거지역","전용공업지역","일반공업지역","준공업지역","보전녹지지역","생산녹지지역","자연녹지지역","개발제한구역"];
 const DEFS = {
@@ -217,7 +226,7 @@ async function loadCellRaw(k) {
     units: A(Uint32Array, n), bb: A(Int32Array, 4 * n), goff: A(Uint32Array, n) };
   const sIdx = A(Uint32Array, ks), sCnt = A(Uint32Array, ks); d.sPts = A(Int32Array, 2 * np);
   d.gbase = o; d.dv = new DataView(buf); o += gbytes;
-  d.bjd = A(Uint16Array, n); d.bun = A(Uint16Array, n); d.ji = A(Uint16Array, n);
+  d.bjd = A(Uint16Array, n); d.bun = A(Uint16Array, n); d.ji = A(Uint16Array, n); d.oa = A(Uint16Array, n);
   d.san = A(Uint8Array, n); d.zone = A(Uint8Array, n); d.kind = A(Uint8Array, n);
   d.samp = new Map(); let q = 0; for (let i = 0; i < ks; i++) { d.samp.set(sIdx[i], [q, sCnt[i]]); q += sCnt[i]; }
   return d;
@@ -230,6 +239,9 @@ function ringOf(d, i) {  // 필지 외곽선 좌표(m) [x0,y0,x1,y1,...]
     for (let k = 1; k < nv; k++) { x += dv.getInt16(o, true); y += dv.getInt16(o + 2, true); o += 4; r[2*k] = x / 10; r[2*k+1] = y / 10; } }
   return r;
 }
+let OA_P = null;   // 2024 집계구 인구표 [코드, 총인구, 평균가구원수, 필지면적합, 필지수]
+function loadOA() { if (!OA_P) { OA_P = fetchBin("data/oa.dat").then(b => JSON.parse(new TextDecoder().decode(b))); OA_P.catch(() => { OA_P = null; }); } return OA_P; }
+const OA_FULL = 0.95;  // 집계구 필지면적의 95% 이상이 구역 안이면 '통째로 포함' → 실측 인구 사용
 const cellsIn = (x0, y0, x1, y1) => META.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1));
 
 /* ---------- 도형 유틸 (ring = [[x,y],...]) */
@@ -416,7 +428,7 @@ async function run(){
       const total = merged.reduce((s,p)=>s+polyArea(p),0);
       const mp = merged.map(p=>({p, b:bboxOf([p])}));
       const gb = bboxOf(merged);
-      const acc={n:0, area:0, res:0, non:0, units:0, zone:{}}; const plist=[];
+      const acc={n:0, area:0, res:0, non:0, units:0, zone:{}}; const plist=[]; const oaIn=new Map();
       // 흩어진 구역이면 전체 범위가 아니라 구역마다 걸치는 칸만 받음
       const csm = new Map(); for (const q of mp) for (const c of cellsIn(q.b[0], q.b[1], q.b[2], q.b[3])) csm.set(c.k, c);
       const cs = [...csm.values()];
@@ -433,14 +445,23 @@ async function run(){
           if(!inside) continue;
           const z=META.zones[d.zone[i]];
           acc.n++; acc.area+=d.area[i]; acc.res+=d.res[i]; acc.non+=d.non[i]; acc.units+=d.units[i]; acc.zone[z]=(acc.zone[z]||0)+d.area[i];
+          { const o=d.oa[i]; let q=oaIn.get(o); if(!q) oaIn.set(o, q={area:0, units:0}); q.area+=d.area[i]; q.units+=d.units[i]; }
           const bjd=META.bjd[d.bjd[i]];
           plist.push([name, bjd[0]+(d.san[i]?"2":"1")+String(d.bun[i]).padStart(4,"0")+String(d.ji[i]).padStart(4,"0"),
             `${bjd[1]} ${d.san[i]?"산":""}${d.bun[i]}${d.ji[i]?"-"+d.ji[i]:""}`, round1(d.area[i]), z, round1(d.res[i]), round1(d.non[i]), d.units[i]]);
         }
       }
-      out.push({name, files:Ls.map(L=>L.file), total, ...acc, plist});
+      // 참고 인구: 통째로 들어온 집계구는 2024 실측 인구, 나머지는 세대수 × 그 집계구 평균가구원수
+      const OA = await loadOA(); const pop = {measured:0, est:0, nFull:0, nPart:0};
+      for (const [o, q] of oaIn) {
+        const t = o === 0xFFFF ? null : OA.oa[o];
+        if (t && t[3] > 0 && q.area / t[3] >= OA_FULL) { pop.measured += t[1]; pop.nFull++; }
+        else { pop.est += q.units * ((t && t[2]) || OA.seoul_pp); if (t) pop.nPart++; }
+      }
+      pop.total = pop.measured + pop.est;
+      out.push({name, files:Ls.map(L=>L.file), total, ...acc, plist, pop});
     }
-    results={rows:out, warns};
+    results={rows:out, warns, oaYear:(await loadOA()).year};
     renderResults();
     setRun(`계산 완료: 구역 ${out.length}개, 필지 ${fmt(out.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
     if(warns.length) setRun(warns.join(" / "),"warn");
@@ -472,6 +493,10 @@ function renderResults(){
     <td class="num">${fmt(r.units)}</td><td class="num">${fmt(r.res)}</td><td class="num">${fmt(r.non)}</td>
     ${zc.map((z,i)=>`<td class="num ${i===0?"gs":""}">${fmt(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}</tbody>`;
   $("#xlsxBtn").disabled = !results;
+  const pb=$("#popBox"); pb.hidden = !results;
+  if (results) $("#popTable").innerHTML = `<thead><tr><th>명칭</th><th class="num">추정 인구(명)</th><th class="num">실측분</th><th class="num">추정분</th><th class="num">실측 비율</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num"><b>${fmt(r.pop.total)}</b></td><td class="num">${fmt(r.pop.measured)}</td><td class="num">${fmt(r.pop.est)}</td>
+    <td class="num">${r.pop.total ? fmt(100*r.pop.measured/r.pop.total) + "%" : "-"}</td></tr>`).join("")}</tbody>`;
 }
 
 /* ---------- 엑셀 */
@@ -489,6 +514,14 @@ function buildWorkbook(){
   rows.forEach(r=>pl.push(...r.plist));
   const ws2=XLSX.utils.aoa_to_sheet(pl); ws2["!cols"]=[{wch:14},{wch:21},{wch:32},{wch:12},{wch:18},{wch:14},{wch:14},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws2, "필지목록");
+  const pp=[["명칭","추정 인구(명)","실측분(집계구 통째 포함)","추정분(세대수×평균가구원수)","실측 비율(%)","통째로 포함된 집계구 수","일부만 걸친 집계구 수"],
+    ...rows.map(r=>[r.name, Math.round(r.pop.total), r.pop.measured, Math.round(r.pop.est), r.pop.total? Math.round(1000*r.pop.measured/r.pop.total)/10 : null, r.pop.nFull, r.pop.nPart]),
+    [], ["참고용 추정치입니다."],
+    [`- 실측분: 구역 안에 필지면적의 ${OA_FULL*100}% 이상이 들어온 집계구의 ${results.oaYear}년 총인구(통계청 SGIS, 집계구 경계 2025-06-30)`],
+    ["- 추정분: 나머지 필지의 주거 세대수 × 그 필지가 속한 집계구의 평균가구원수(2024)"],
+    ["- 세대수는 건축물대장 기준(2026년 8월), 실측 인구는 2024년 기준이라 시점이 다릅니다. 그 사이 새로 지은 건물은 실측분에 빠질 수 있습니다."]];
+  const ws4=XLSX.utils.aoa_to_sheet(pp); ws4["!cols"]=[{wch:18},{wch:14},{wch:22},{wch:26},{wch:12},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws4, "인구(참고)");
   const bs=[["계산 기준"],[`자료: ${META.version}`],[`계산일: ${new Date().toLocaleDateString("ko-KR")}`],...BASIS.map(b=>["- "+b]),
     ...rows.map(r=>[`- '${r.name}' 구역 파일: ${r.files.join(", ")}`]), ...results.warns.map(w=>["! "+w])];
   const ws3=XLSX.utils.aoa_to_sheet(bs); ws3["!cols"]=[{wch:130}]; XLSX.utils.book_append_sheet(wb, ws3, "기준");
