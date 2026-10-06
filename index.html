@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Field-Scan — 밝은 업무용 화면: 하늘색(#00AFF0)은 주요 버튼·선택·핵심 경계에만, 글자는 짙은 남색, 바탕은 차가운 회색.
-   흐름: ① 구역 정하기(지도·파일) → ② 현황 집계 결과(표) → 엑셀 받기 */
+   흐름: ① 구역 정하기(지도·파일) → ② 결과(표) → 엑셀 받기 */
 :root{
   --bg:#F3F6F9; --panel:#FFFFFF; --ink:#13233A; --muted:#5C6B7E; --faint:#8A97A8;
   --line:#E3E8EE; --line-strong:#CBD5E0; --head:#F7F9FB;
@@ -135,10 +135,24 @@ input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--lin
 
 /* 결과 표: 핵심 현황 → 용도지역 구성 순서로 읽히게 */
 .tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:10px;position:relative}
-.tablewrap{position:relative}
-.tablewrap.scroll::after{content:"";position:absolute;top:1px;right:1px;bottom:1px;width:28px;border-radius:0 10px 10px 0;pointer-events:none;background:linear-gradient(to right,transparent,rgba(19,35,58,.10))}
-.tablewrap.scroll.end::after{display:none}
-.scrollhint{font-size:12px;color:var(--faint);text-align:right;margin-top:4px}
+/* 결과표: 왼쪽 현황(고정)과 오른쪽 용도지역(가로 스크롤)을 나란히 붙여 한 표처럼 보이게. 행 높이는 JS가 양쪽을 맞춤 */
+.rt{display:flex;align-items:flex-start;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:var(--panel)}
+.rt-core{flex:none;border-right:1px solid var(--line-strong);position:relative;z-index:1;box-shadow:4px 0 6px -4px rgba(19,35,58,.10)}
+.rt-zone{flex:1 1 auto;min-width:96px;overflow-x:auto}
+.rt table{width:auto}
+.rt-zone table{width:100%}
+.rt th,.rt td{height:38px;box-sizing:border-box}
+.rt thead tr:first-child th{height:30px}
+.rt tbody tr.hov td{background:#F2F8FC}
+.rt tbody tr.total td{border-top:2px solid #9AA8B8;background:var(--head);font-weight:700;color:var(--ink)}
+.rt tbody tr.total td.z{color:var(--ink)}
+.rt.scroll::after{content:"";position:absolute;top:0;right:0;bottom:0;width:24px;pointer-events:none;background:linear-gradient(to right,transparent,rgba(19,35,58,.10))}
+.rt.scroll.end::after{display:none}
+#zoneTable th.gs{box-shadow:inset 0 -2px 0 #FF6A00}
+@media (max-width:760px){ .rt{overflow-x:auto} .rt-zone{flex:none;overflow:visible} .rt-core{box-shadow:none} }
+.tablefoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:5px}
+.tablefoot .hint{font-size:12px}
+.scrollhint{font-size:12px;color:var(--faint);text-align:right;margin-left:auto}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
 th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{background:var(--head);font-weight:600;font-size:12.5px;color:var(--muted)}
@@ -180,12 +194,12 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
 .lyr .menu{margin-top:4px;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(16,36,58,.16);min-width:170px}
 .lyr .menu label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap}
 .lyr .menu input{accent-color:#00AFF0;width:15px;height:15px}
-.lyr .menu .sw{width:14px;height:14px;border-radius:3px;border:1.5px solid #C0182F;background:repeating-linear-gradient(135deg,rgba(192,24,47,.55) 0 2px,rgba(192,24,47,.08) 2px 5px)}
+.mapinfo .lyr .menu .sw{padding:0;background-color:transparent}
+.lyr .menu .sw{width:14px;height:14px;border-radius:3px;border:1.5px solid #E05600;background:repeating-linear-gradient(135deg,rgba(255,106,0,.55) 0 2px,rgba(255,106,0,.10) 2px 5px)}
 .lyr .menu p{margin:6px 0 0;font-size:11px;color:var(--faint);white-space:normal;max-width:200px}
-.legend{background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:7px 9px;font-size:11.5px;color:var(--ink);display:flex;flex-direction:column;gap:3px;max-width:220px;box-shadow:0 2px 8px rgba(16,36,58,.12)}
-.legend .li{display:flex;align-items:center;gap:6px}
-.legend .li i{width:14px;height:10px;border-radius:2px;border:1px solid rgba(60,70,90,.25);flex:none}
-.legend .src{color:var(--faint);font-size:10.5px;margin-top:3px;line-height:1.35}
+.legend{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:6px;padding:4px 7px;font-size:11px;line-height:1.3;color:var(--ink);display:flex;flex-direction:column;gap:2px;box-shadow:0 1px 4px rgba(16,36,58,.10)}
+.legend .li{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.legend .li i{width:12px;height:9px;border-radius:2px;border:1px solid rgba(60,70,90,.25);flex:none}
 .zntip{position:absolute;z-index:790;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px;font-size:12px;box-shadow:0 2px 8px rgba(16,36,58,.14);white-space:nowrap;transform:translate(12px,-120%)}
 .zntip i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(60,70,90,.3)}
 .zntip small{color:var(--faint);margin-left:6px}
@@ -231,11 +245,11 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
   </section>
 
   <section class="step" aria-labelledby="s3">
-    <h2 id="s3"><span class="no">2</span>현황 집계 결과</h2>
+    <h2 id="s3"><span class="no">2</span>결과</h2>
     <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div>
-      <div class="tablewrap" id="tableWrap"><div class="tablebox" id="tableBox"><table id="resultTable"></table></div></div>
-      <div class="scrollhint" id="scrollHint" hidden>옆으로 넘기면 용도지역이 더 있습니다 →</div>
+      <div class="rt" id="tableWrap"><div class="rt-core"><table id="resultTable"></table></div><div class="rt-zone" id="tableBox"><table id="zoneTable"></table></div></div>
+      <div class="tablefoot"><span class="hint" id="sumNote" hidden>합계는 구역별 결과를 더한 값입니다. 서로 겹치는 구역은 중복 포함될 수 있습니다.</span><span class="scrollhint" id="scrollHint" hidden>용도지역은 옆으로 넘겨 보세요 →</span></div>
     </div>
     <details class="popbox" id="popBox" hidden>
       <summary><b>참고 · 추정 인구</b><span class="sum" id="popSum"></span><span>— 펼쳐 보기</span></summary>
@@ -611,18 +625,34 @@ const SAMPLE = [ // 예시: 성장잠재권형 '도심주변'·'광역' 계산�
   {name:"도심주변", total:1709361, n:7661, area:1546071, units:20389, res:1323105, non:1873368, zone:{"일반상업지역":274866,"제2종일반주거지역":0}},
   {name:"광역", total:288217, n:763, area:260428, units:1967, res:102280, non:82994, zone:{"일반상업지역":23671}},
 ];
+const CORE = [["총 면적","㎡","total"],["필지수","","n"],["필지면적","㎡","area"],["주거 세대수","","units"],["주거연면적","㎡","res"],["비주거연면적","㎡","non"]];
+// 합계: 구역별로 반올림한 값을 더함(표·엑셀에서 각 행을 더한 값과 같게). 겹친 구역은 중복될 수 있음
+function totalRow(rows, zc){
+  const t = { name: "합계", zone: {} };
+  for (const c of CORE) t[c[2]] = rows.reduce((a, r) => a + Math.round(r[c[2]] || 0), 0);
+  for (const z of zc) t.zone[z] = rows.reduce((a, r) => a + Math.round(r.zone[z] || 0), 0);
+  return t;
+}
 function renderResults(){
   const rows = results ? results.rows : SAMPLE;
   $("#sampleBadge").hidden = !!results;
   const zc = results ? zoneCols(rows) : ["일반상업지역"];
-  const CORE = [["총 면적","㎡","total"],["필지수","","n"],["필지면적","㎡","area"],["주거 세대수","","units"],["주거연면적","㎡","res"],["비주거연면적","㎡","non"]];
+  const tot = totalRow(rows, zc);
   const dot = r => results ? `<i class="dot" style="background:${colorOf(r.name)}"></i>` : "";
   const zv = v => v > 0 ? fmt(v) : '<span class="zero">–</span>';
+  const bodyCls = results ? "" : "sample";
   $("#resultTable").innerHTML = `<thead>
-    <tr><th rowspan="2" class="namecol">구역</th><th colspan="${CORE.length}" class="grp core">핵심 현황</th><th colspan="${zc.length}" class="grp zone">용도지역 구성 <small>(㎡)</small></th></tr>
-    <tr>${CORE.map(c=>`<th class="num core">${c[0]}${c[1]?`<small>${c[1]}</small>`:""}</th>`).join("")}${zc.map((z,i)=>`<th class="num${i===0?" zfirst":""}">${esc(z)}</th>`).join("")}</tr></thead>
-    <tbody class="${results?"":"sample"}">${rows.map(r=>`<tr><td class="namecol">${dot(r)}${esc(r.name)}</td>${CORE.map(c=>`<td class="num core">${fmt(r[c[2]])}</td>`).join("")}
-    ${zc.map((z,i)=>`<td class="num z${i===0?" zfirst gs":""}">${zv(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+    <tr><th rowspan="2" class="namecol">구역</th><th colspan="${CORE.length}" class="grp core">핵심 현황</th></tr>
+    <tr>${CORE.map(c=>`<th class="num core">${c[0]}${c[1]?`<small>${c[1]}</small>`:""}</th>`).join("")}</tr></thead>
+    <tbody class="${bodyCls}">${rows.map(r=>`<tr><td class="namecol">${dot(r)}${esc(r.name)}</td>${CORE.map(c=>`<td class="num core">${fmt(r[c[2]])}</td>`).join("")}</tr>`).join("")}
+    <tr class="total"><td class="namecol">합계</td>${CORE.map(c=>`<td class="num core">${fmt(tot[c[2]])}</td>`).join("")}</tr></tbody>`;
+  $("#zoneTable").innerHTML = `<thead>
+    <tr><th colspan="${zc.length}" class="grp zone">용도지역 구성 <small>(㎡)</small></th></tr>
+    <tr>${zc.map(z=>`<th class="num${z==="일반상업지역"?" gs":""}">${esc(z)}</th>`).join("")}</tr></thead>
+    <tbody class="${bodyCls}">${rows.map(r=>`<tr>${zc.map(z=>`<td class="num z${z==="일반상업지역"?" gs":""}">${zv(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}
+    <tr class="total">${zc.map(z=>`<td class="num z">${zv(tot.zone[z])}</td>`).join("")}</tr></tbody>`;
+  $("#sumNote").hidden = false;
+  syncRows();
   $("#xlsxBtn").disabled = !results;
   updateScrollHint();
   const pb=$("#popBox"); pb.hidden = !results;
@@ -634,11 +664,22 @@ function renderResults(){
   }
   if (typeof drawOverlays === "function" && results) drawOverlays();   // 지도 라벨 면적을 계산값으로 맞춤
 }
+// 두 표의 행 높이를 맞추고, 마우스를 올린 행은 양쪽을 함께 강조
+function syncRows(){
+  const a=[...$("#resultTable").rows], b=[...$("#zoneTable").rows];
+  a.concat(b).forEach(tr=>{ tr.style.height=""; });
+  a.forEach((tr,i)=>{ const o=b[i]; if(!o) return; const h=Math.max(tr.getBoundingClientRect().height, o.getBoundingClientRect().height); tr.style.height=o.style.height=h+"px"; });
+}
+for (const id of ["#resultTable", "#zoneTable"]) {
+  $(id).addEventListener("mouseover", e => { const tr = e.target.closest("tbody tr"); document.querySelectorAll(".rt tr.hov").forEach(t => t.classList.remove("hov"));
+    if (!tr) return; const i = tr.sectionRowIndex; for (const t of ["#resultTable", "#zoneTable"]) { const o = $(t).tBodies[0] && $(t).tBodies[0].rows[i]; if (o) o.classList.add("hov"); } });
+  $(id).addEventListener("mouseleave", () => document.querySelectorAll(".rt tr.hov").forEach(t => t.classList.remove("hov")));
+}
 function updateScrollHint(){
-  const box=$("#tableBox"), wrap=$("#tableWrap"); const sc = box.scrollWidth > box.clientWidth + 2;
+  const box=$("#tableBox"), wrap=$("#tableWrap"); const sc = getComputedStyle(box).overflowX === "auto" && box.scrollWidth > box.clientWidth + 2;
   wrap.classList.toggle("scroll", sc); wrap.classList.toggle("end", box.scrollLeft + box.clientWidth >= box.scrollWidth - 2); $("#scrollHint").hidden = !sc;
 }
-$("#tableBox").addEventListener("scroll", updateScrollHint); window.addEventListener("resize", updateScrollHint);
+$("#tableBox").addEventListener("scroll", updateScrollHint); window.addEventListener("resize", () => { syncRows(); updateScrollHint(); });
 
 /* ---------- 엑셀: 시트 빌더를 순서대로 붙임. STEP 2가 준비되면 STEP2.sheets(ctx)가 '기준' 앞에 들어감 */
 const sheetStep1Summary = ctx => {
@@ -646,7 +687,9 @@ const sheetStep1Summary = ctx => {
   const head1=["명칭","총 면적(㎡)","필지수","필지면적(㎡)","주거 세대수","주거연면적(㎡)","비주거연면적(㎡)","용도지역별 면적(㎡)",...Array(zc.length-1).fill(null)];
   const head2=[null,null,null,null,null,null,null,...zc];
   const body=rows.map(r=>[r.name, Math.round(r.total), r.n, Math.round(r.area), r.units, Math.round(r.res), Math.round(r.non), ...zc.map(z=>Math.round(r.zone[z]||0))]);
-  const ws=XLSX.utils.aoa_to_sheet([head1,head2,...body]);
+  const t=totalRow(rows, zc);
+  body.push(["합계", t.total, t.n, t.area, t.units, t.res, t.non, ...zc.map(z=>t.zone[z])]);
+  const ws=XLSX.utils.aoa_to_sheet([head1,head2,...body,[],["합계는 구역별 결과를 더한 값입니다. 서로 겹치는 구역은 중복 포함될 수 있습니다."]]);
   ws["!merges"]=[0,1,2,3,4,5,6].map(c=>({s:{r:0,c},e:{r:1,c}})).concat(zc.length>1?[{s:{r:0,c:7},e:{r:0,c:6+zc.length}}]:[]);
   ws["!cols"]=[{wch:18},{wch:14},{wch:9},{wch:14},{wch:11},{wch:15},{wch:15},...zc.map(()=>({wch:16}))];
   for(let r=2;r<2+body.length;r++) for(let c=1;c<head1.length;c++){ const a=XLSX.utils.encode_cell({r,c}); if(ws[a]) ws[a].z="#,##0"; }
@@ -728,13 +771,13 @@ const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
     <div class="lyr" id="lyr"><button type="button" id="lyrBtn" aria-expanded="false" aria-controls="lyrMenu">용도지역 표시 ▾</button>
       <div class="menu" id="lyrMenu" hidden><label><input type="checkbox" id="gsChk"><span class="sw" aria-hidden="true"></span>일반상업지역</label>
       <p>지도 종류와 상관없이 일반상업지역을 빗금으로 겹쳐 보여줍니다.</p></div></div>
-    <button type="button" id="homeBtn">서울 전체</button><span id="mapLoad" hidden>필지 불러오는 중…</span><span id="zoomHint"></span>`;
+    <span id="mapLoad" hidden>필지 불러오는 중…</span><span id="znLoad" hidden>용도지역 불러오는 중…</span><span id="zoomHint"></span>`;
   return d; } });
 new MapInfo().addTo(map);
 const PARCEL_Z = 16;          // 이 배율부터 지적선 표시
 function zoomHint() { const el = document.getElementById("zoomHint"); if (el) el.textContent = map.getZoom() < PARCEL_Z ? "더 확대하면 지적선이 보입니다" : ""; }
 map.on("zoomend", zoomHint);
-setTimeout(() => { zoomHint(); document.getElementById("homeBtn").addEventListener("click", () => map.fitBounds(SEOUL_VIEW));
+setTimeout(() => { zoomHint();
   document.querySelectorAll(".basebtn").forEach(b => b.addEventListener("click", () => setBase(b.dataset.k))); }, 0);
 let DONG = null;   // 법정동 경계·이름(찾기에서 동으로 이동할 때 사용)
 fetchBin("data/dong.dat").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); }).catch(() => {});
@@ -778,9 +821,8 @@ const ZN_COLOR = {"제1종전용주거지역":"#F3EBC0","제2종전용주거지�
   "전용공업지역":"#B3A4D6","일반공업지역":"#BFB2DC","준공업지역":"#C9BEE3",
   "보전녹지지역":"#A9CF9C","생산녹지지역":"#C6E0B0","자연녹지지역":"#BCDDB0","도시지역기타":"#D5DBE1"};
 const ZN_LEGEND = [["주거지역","#E9D27E"],["준주거지역","#E7B489"],["상업지역","#E3A2A6"],["공업지역","#C9BEE3"],["녹지지역","#BCDDB0"]];
-const GS = "일반상업지역", GS_STROKE = "#C0182F";
-const ZN_OV_Z = 14;     // 이 배율 미만은 서울 전체 개관용(단순화) 도형, 이상은 1km 칸 상세 도형
-let ZN_META = null, ZN_OV = null, gsOn = false;
+const GS = "일반상업지역", GS_STROKE = "#E05600";
+let ZN_META = null, gsOn = false;
 const ZNC = new Map();
 const loadZnMeta = () => { if (!ZN_META) { ZN_META = fetch("data/zn_meta.json").then(r => r.json()); ZN_META.catch(() => { ZN_META = null; }); } return ZN_META; };   // 한 번만 받음
 function znParse(buf) { return JSON.parse(new TextDecoder().decode(buf)).map(([z, rings]) => {
@@ -792,17 +834,15 @@ function loadZnCell(k) {   // 같은 칸은 한 번만 받음(실패하면 다�
   if (!ZNC.has(k)) { const pr = fetchBin(`data/zn_${k}.dat`).then(znParse); ZNC.set(k, pr); pr.catch(() => ZNC.delete(k)); }
   return ZNC.get(k);
 }
-function loadZnOv() { if (!ZN_OV) { ZN_OV = fetchBin("data/zn_overview.dat").then(znParse); ZN_OV.catch(() => { ZN_OV = null; }); } return ZN_OV; }
-async function znPolysIn(x0, y0, x1, y1, z) {
+async function znPolysIn(x0, y0, x1, y1) {   // 1km 칸 상세 도형 중 범위에 걸치는 것만
   const m = await loadZnMeta();
-  const list = z < ZN_OV_Z ? await loadZnOv()
-    : (await Promise.all(m.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1)).map(c => loadZnCell(c.k)))).flat();
+  const list = (await Promise.all(m.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1)).map(c => loadZnCell(c.k)))).flat();
   return { m, list: list.filter(q => !(q.bb[2] < x0 || q.bb[0] > x1 || q.bb[3] < y0 || q.bb[1] > y1)) };
 }
 let gsPattern = null;
 function hatch(ctx) {
   if (!gsPattern) { const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d");
-    g.strokeStyle = "rgba(192,24,47,.55)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke(); gsPattern = c; }
+    g.strokeStyle = "rgba(255,106,0,.53)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke(); gsPattern = c; }
   return ctx.createPattern(gsPattern, "repeat");
 }
 // 타일 모서리 → 5186 변환을 만들어 도형을 그리는 공용 캔버스 층 (지적선 층과 같은 방식)
@@ -820,12 +860,13 @@ const ZnLayer = L.GridLayer.extend({
   createTile(coords, done) {
     const tile = document.createElement("canvas"); tile.width = tile.height = 256; const ctx = tile.getContext("2d"); const gsOnly = this.options.gsOnly;
     const { P, box } = tileXform(coords);
-    znPolysIn(box[0] - 5, box[1] - 5, box[2] + 5, box[3] + 5, coords.z).then(({ m, list }) => {
+    znPolysIn(box[0] - 5, box[1] - 5, box[2] + 5, box[3] + 5).then(({ m, list }) => {
+      if (!this._map || !tile.isConnected) return done(null, tile);   // 그새 지도에서 빠졌거나 화면 밖으로 밀려난 타일은 그리지 않음
       for (const q of list) {
         const name = m.zones[q.z];
         if (gsOnly) {
           if (name !== GS) continue;
-          znPath(ctx, P, q); ctx.fillStyle = "rgba(192,24,47,.10)"; ctx.fill("evenodd"); ctx.fillStyle = hatch(ctx); ctx.fill("evenodd");
+          znPath(ctx, P, q); ctx.fillStyle = "rgba(255,106,0,.11)"; ctx.fill("evenodd"); ctx.fillStyle = hatch(ctx); ctx.fill("evenodd");
           ctx.strokeStyle = GS_STROKE; ctx.globalAlpha = .85; ctx.lineWidth = coords.z >= 15 ? 1.6 : 1.1; ctx.stroke(); ctx.globalAlpha = 1;
         } else {
           znPath(ctx, P, q); ctx.fillStyle = ZN_COLOR[name] || "#D5DBE1"; ctx.globalAlpha = .55; ctx.fill("evenodd");
@@ -837,40 +878,68 @@ const ZnLayer = L.GridLayer.extend({
     return tile;
   }
 });
-const znLayer = new ZnLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 3, updateWhenZooming: false });
-const gsLayer = new ZnLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 4, updateWhenZooming: false, gsOnly: true });
-// 범례(용도지역 지도 또는 일반상업 강조가 켜졌을 때만)
-const Legend = L.Control.extend({ options: { position: "bottomright" }, onAdd() { const d = L.DomUtil.create("div", "legend"); d.id = "znLegend"; L.DomEvent.disableClickPropagation(d); return d; } });
-new Legend().addTo(map);
-function updateZoningLayers() {
-  const showZn = baseKind === "zone";
-  if (showZn && !map.hasLayer(znLayer)) znLayer.addTo(map); else if (!showZn && map.hasLayer(znLayer)) map.removeLayer(znLayer);
-  if (gsOn && !map.hasLayer(gsLayer)) gsLayer.addTo(map); else if (!gsOn && map.hasLayer(gsLayer)) map.removeLayer(gsLayer);
-  const lg = document.getElementById("znLegend"); if (!lg) return;
-  if (!showZn && !gsOn) { lg.hidden = true; znTip.hidden = true; return; }
-  lg.hidden = false;
-  loadZnMeta().then(m => { lg.innerHTML = (showZn ? ZN_LEGEND.map(([n, c]) => `<span class="li"><i style="background:${c}"></i>${n}</span>`).join("") : "") +
-    (gsOn ? `<span class="li"><i style="background:repeating-linear-gradient(135deg,rgba(192,24,47,.55) 0 2px,rgba(192,24,47,.08) 2px 5px);border-color:${GS_STROKE}"></i>일반상업지역 강조</span>` : "") +
-    `<span class="src">용도지역: ${esc(m.source)}, ${esc(m.fetched)} 받음. 마우스를 올리면 이름이 보입니다.</span>`; });
+// 저배율(타일 줌 10~13): prep_zoning_tiles.py로 미리 그린 PNG 타일. 그린 타일 목록(zn_meta.tiles)에 없는 곳은 요청하지 않음
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const ZnTiles = L.TileLayer.extend({ getTileUrl(c) { const set = ZN_TILESET && ZN_TILESET[this.options.kind][c.z];
+  return set && set.has(`${c.x}_${c.y}`) ? L.TileLayer.prototype.getTileUrl.call(this, c) : BLANK; } });
+let ZN_TILESET = null;
+const LOW_MAX = 13;   // 이 타일 줌까지는 미리 그린 타일, 그 위는 1km 칸 상세 도형
+const znLow = new ZnTiles("data/znt/{z}/{x}/{y}.png", { kind: "zn", minZoom: 10, maxZoom: LOW_MAX, zIndex: 3 });
+const gsLow = new ZnTiles("data/gst/{z}/{x}/{y}.png", { kind: "gs", minZoom: 10, maxZoom: LOW_MAX, zIndex: 4 });
+const znVec = new ZnLayer({ tileSize: 256, minZoom: LOW_MAX + 1, maxZoom: 20, zIndex: 3, updateWhenZooming: false });
+const gsVec = new ZnLayer({ tileSize: 256, minZoom: LOW_MAX + 1, maxZoom: 20, zIndex: 4, updateWhenZooming: false, gsOnly: true });
+const ZN_SETS = { zn: [znLow, znVec], gs: [gsLow, gsVec] };
+// 불러오는 동안 짧게 표시
+const znPending = new Set();
+const znLoadShow = () => { const el = document.getElementById("znLoad"); if (el) el.hidden = !znPending.size; };
+for (const l of [znLow, gsLow, znVec, gsVec]) {
+  l.on("loading", () => { znPending.add(l); znLoadShow(); }); l.on("load", () => { znPending.delete(l); znLoadShow(); });
+  l.on("remove", () => { znPending.delete(l); znLoadShow(); });
 }
-// 마우스를 올리면 그 자리 용도지역 이름(용도지역 지도 또는 일반상업 강조가 켜졌을 때만)
+// 범례(용도지역 지도 또는 일반상업 강조가 켜졌을 때만): 색과 이름만
+const Legend = L.Control.extend({ options: { position: "bottomright" }, onAdd() { const d = L.DomUtil.create("div", "legend"); d.id = "znLegend"; d.hidden = true; L.DomEvent.disableClickPropagation(d); return d; } });
+new Legend().addTo(map);
+const GS_SWATCH = `repeating-linear-gradient(135deg,rgba(255,106,0,.55) 0 2px,rgba(255,106,0,.10) 2px 5px);border-color:${GS_STROKE}`;
+let znReq = 0;
+async function updateZoningLayers() {
+  const showZn = baseKind === "zone", my = ++znReq;
+  const lg = document.getElementById("znLegend");
+  if (lg) { lg.hidden = !showZn && !gsOn;
+    lg.innerHTML = (showZn ? ZN_LEGEND.map(([n, c]) => `<span class="li"><i style="background:${c}"></i>${n}</span>`).join("") : "") +
+      (gsOn ? `<span class="li"><i style="background:${GS_SWATCH}"></i>일반상업지역 강조</span>` : ""); }
+  if (!showZn && !gsOn) znTip.hidden = true;
+  for (const l of ZN_SETS.zn) if (!showZn && map.hasLayer(l)) map.removeLayer(l);   // 끄면 바로 빼서 더 그리지 않음
+  for (const l of ZN_SETS.gs) if (!gsOn && map.hasLayer(l)) map.removeLayer(l);
+  if (!showZn && !gsOn) return;
+  if (!ZN_TILESET) { try { const m = await loadZnMeta();
+    ZN_TILESET = {}; for (const k of ["zn", "gs"]) { ZN_TILESET[k] = {}; for (const [z, a] of Object.entries(m.tiles[k])) ZN_TILESET[k][z] = new Set(a); }
+  } catch (e) { console.error(e); return; } }
+  if (my !== znReq) return;   // 그 사이 다시 바뀌었으면 마지막 요청만 반영
+  if (baseKind === "zone") for (const l of ZN_SETS.zn) if (!map.hasLayer(l)) l.addTo(map);
+  if (gsOn) for (const l of ZN_SETS.gs) if (!map.hasLayer(l)) l.addTo(map);
+}
+// 마우스를 올리면 그 자리 용도지역 이름: 지도를 움직이는 중에는 쉬고, 멈춘 뒤 0.2초 지나면 그 점이 든 칸의 도형만 검사
 const znTip = L.DomUtil.create("div", "zntip", map.getContainer()); znTip.hidden = true;
-let znTipTimer = null;
+let znTipTimer = null, mapMoving = false, tipSeq = 0;
+map.on("movestart zoomstart", () => { mapMoving = true; znTip.hidden = true; clearTimeout(znTipTimer); });
+map.on("moveend zoomend", () => { mapMoving = false; });
+const inFlat = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) { const yi = r[i+1], yj = r[j+1];
+  if ((yi > y) !== (yj > y) && x < (r[j] - r[i]) * (y - yi) / (yj - yi) + r[i]) c = !c; } return c; };
 map.on("mousemove", e => {
-  if (drawing || (baseKind !== "zone" && !gsOn)) { znTip.hidden = true; return; }
   clearTimeout(znTipTimer);
+  if (drawing || mapMoving || (baseKind !== "zone" && !gsOn)) { znTip.hidden = true; return; }
+  const my = ++tipSeq;
   znTipTimer = setTimeout(async () => {
-    const [x, y] = XY(e.latlng); const { m, list } = await znPolysIn(x - 1, y - 1, x + 1, y + 1, map.getZoom());
-    let hit = null;
-    for (const q of list) { if (!inRing(x, y, ringPts(q.rs[0]))) continue; let hole = false; for (let k = 1; k < q.rs.length; k++) if (inRing(x, y, ringPts(q.rs[k]))) { hole = true; break; } if (!hole) { hit = q; break; } }
-    if (!hit || drawing) { znTip.hidden = true; return; }
+    const [x, y] = XY(e.latlng); const { m, list } = await znPolysIn(x, y, x, y);
+    if (my !== tipSeq || drawing || mapMoving) return;
+    const hit = list.find(q => inFlat(x, y, q.rs[0]) && !q.rs.slice(1).some(h => inFlat(x, y, h)));
+    if (!hit) { znTip.hidden = true; return; }
     const name = m.zones[hit.z]; const cp = e.containerPoint;
-    znTip.innerHTML = `<i style="background:${ZN_COLOR[name] || "#D5DBE1"}"></i><b>${esc(name)}</b><small>공식 용도지역</small>`;
+    znTip.innerHTML = `<i style="background:${ZN_COLOR[name] || "#D5DBE1"}"></i><b>${esc(name)}</b>`;
     znTip.style.left = cp.x + "px"; znTip.style.top = cp.y + "px"; znTip.hidden = false;
-  }, 60);
+  }, 200);
 });
-map.on("mouseout", () => { znTip.hidden = true; });
-const ringPts = r => { const out = new Array(r.length / 2); for (let i = 0; i < r.length; i += 2) out[i / 2] = [r[i], r[i + 1]]; return out; };
+map.on("mouseout", () => { clearTimeout(znTipTimer); tipSeq++; znTip.hidden = true; });
 // '용도지역 표시' 메뉴: 마우스를 올리면 펼치고, 누르면 고정, 바깥을 누르면 닫힘
 setTimeout(() => {
   const lyr = document.getElementById("lyr"), btn = document.getElementById("lyrBtn"), menu = document.getElementById("lyrMenu"), chk = document.getElementById("gsChk");
@@ -888,7 +957,7 @@ setTimeout(() => {
 const overlay = L.layerGroup().addTo(map);
 const labelLayer = L.layerGroup().addTo(map);
 
-/* 서울 밖은 반투명 흰 마스크로 흐리게, 서울 경계는 하늘색 선. 지도 조작을 막지 않도록 클릭이 통과하는 별도 층에 둠 */
+/* 서울 밖은 반투명 흰 마스크로 흐리게, 서울 경계는 짙은 회색 선(입력 구역 색과 헷갈리지 않게). 지도 조작을 막지 않도록 클릭이 통과하는 별도 층에 둠 */
 map.createPane("seoulMask"); map.getPane("seoulMask").style.zIndex = 350; map.getPane("seoulMask").style.pointerEvents = "none";
 const MASK_OPACITY = { base: 0.45, sat: 0.35, zone: 0.5 };   // 흰 마스크 불투명도(= 55~65% 투명)
 let seoulMask = null;
@@ -896,11 +965,12 @@ fetchBin("data/seoul.dat").then(b => {
   const rings = JSON.parse(new TextDecoder().decode(b));
   const world = [[-85, -179.9], [-85, 179.9], [85, 179.9], [85, -179.9]];
   seoulMask = L.polygon([world, ...rings], { pane: "seoulMask", stroke: false, fillColor: "#FFFFFF", fillOpacity: MASK_OPACITY[baseKind], interactive: false }).addTo(map);
-  L.polygon(rings, { pane: "seoulMask", fill: false, color: "#00AFF0", weight: 2.5, opacity: .95, interactive: false }).addTo(map);
+  L.polygon(rings, { pane: "seoulMask", fill: false, color: "#20252B", weight: 2, opacity: .8, interactive: false }).addTo(map);
 }).catch(() => {});
 
 /* 구역 색: 이름(=합쳐 계산되는 단위)마다 하나. 지도 도형·구역 목록 점·결과표 점이 같은 색 */
-const ZONE_COLORS = ["#2F6FDE", "#E2702A", "#2A9D6A", "#C23F86", "#7657D3", "#B98D12", "#178F9E", "#8A5A3B"];
+// 파랑·자홍·초록·보라·청록·빨강·연두·갈색 순(색각 차이를 고려해 밝기도 서로 다르게). 주황은 일반상업 강조색이라 쓰지 않음
+const ZONE_COLORS = ["#1D4ED8", "#DB2777", "#059669", "#7C3AED", "#0E7490", "#B91C1C", "#65A30D", "#854D0E"];
 const nameColor = new Map(); const hiddenKeys = new Set();
 let selectedKey = null, hoverKey = null;
 const zoneShapes = new Map();   // 이름 → { shapes, color, labelLL, area, marker }
@@ -925,8 +995,8 @@ function drawOverlays() {
   for (const [k, g] of groups) {
     const color = colorOf(k);
     if (hiddenKeys.has(k) || !g.xy.length) continue;
-    L.polygon(g.ll, { color: "#FFFFFF", weight: 5, opacity: .9, fill: false, interactive: false }).addTo(overlay);   // 흰 테두리(용도지역·위성 위에서도 경계가 묻히지 않게)
-    const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2 }).addTo(overlay));
+    L.polygon(g.ll, { color: "#FFFFFF", weight: 6, opacity: .9, fill: false, interactive: false }).addTo(overlay);   // 흰 테두리(용도지역·위성 위에서도 경계가 묻히지 않게)
+    const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2.75 }).addTo(overlay));
     for (const sh of shapes) {
       sh.on("mouseover", () => { if (drawing) return; hoverKey = k; styleZones(); placeLabels(); });
       sh.on("mouseout", () => { if (hoverKey === k) { hoverKey = null; styleZones(); placeLabels(); } });
@@ -944,7 +1014,7 @@ function styleZones() {
   const focus = hoverKey || selectedKey;
   for (const [k, z] of zoneShapes) {
     const on = k === selectedKey || k === hoverKey, dim = !!focus && !on;
-    for (const sh of z.shapes) sh.setStyle({ color: z.color, fillColor: z.color, weight: on ? 3.5 : 2, opacity: dim ? .4 : .95, fillOpacity: on ? .24 : (dim ? .04 : .12) });
+    for (const sh of z.shapes) sh.setStyle({ color: z.color, fillColor: z.color, weight: on ? 4 : 2.75, opacity: dim ? .7 : 1, fillOpacity: on ? .3 : (dim ? .14 : .22) });
     if (on) z.shapes.forEach(sh => sh.bringToFront());
   }
   document.querySelectorAll(".zitem").forEach(el => el.classList.toggle("sel", el.dataset.k === selectedKey));
@@ -1065,9 +1135,11 @@ async function goTo(bi, m) {
 $("#qBtn").addEventListener("click", findParcel);
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") findParcel(); });
 
-const MAP_NOTES = ["지도의 용도지역·일반상업지역 표시는 공식 용도지역 도형(브이월드 2D데이터 LT_C_UQ111, 국토교통부 도시계획 정보)을 미리 받아 그린 것입니다. 받은 날짜는 지도 범례에 표시됩니다.",
+const MAP_NOTES = ["지도의 용도지역·일반상업지역 표시는 공식 용도지역 도형(브이월드 2D데이터 LT_C_UQ111, 국토교통부 도시계획 정보)을 미리 받아 그린 것입니다. 지도에 마우스를 올리면 그 자리 용도지역 이름이 보입니다.",
   "결과표·엑셀의 용도지역별 면적은 필지별 대표 용도지역 기준이라, 한 필지가 여러 용도지역에 걸치면 지도 경계와 차이가 있을 수 있습니다."];
-$("#basis").innerHTML = BASIS.concat(MAP_NOTES).map(b=>`<li>${esc(b)}</li>`).join("");
+const renderBasis = () => { $("#basis").innerHTML = BASIS.concat(MAP_NOTES).map(b=>`<li>${esc(b)}</li>`).join(""); };
+renderBasis();
+loadZnMeta().then(m => { MAP_NOTES[0] = `지도의 용도지역·일반상업지역 표시는 공식 용도지역 도형인 ${m.source}을 ${m.fetched}에 받아 그린 것입니다. 지도에 마우스를 올리면 그 자리 용도지역 이름이 보입니다.`; renderBasis(); }).catch(() => {});
 renderResults();
 </script>
 
