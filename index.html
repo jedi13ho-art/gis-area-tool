@@ -15,7 +15,7 @@
   --gs:#FF6A00; --gs-fill:rgba(255,106,0,.20);
   --r-card:10px; --r-ctl:8px; --r-chip:6px; --shadow:0 1px 3px rgba(22,50,74,.06);
   --warn:#9A5B00; --warn-soft:#FFF4E0; --bad:#B3261E; --ok:#1C7A4E;
-  --sample:#8A97A8;
+
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
 }
@@ -23,12 +23,12 @@
   --bg:#0E1620; --panel:#15202C; --ink:#E5EDF5; --muted:#9AA9B9; --faint:#738396;
   --line:#243444; --line-strong:#33475B; --head:#192634;
   --accent:#00AEEF; --accent-hover:#33C3F5; --accent-ink:#03202F; --accent-text:#5ECDF7; --accent-soft:#0F2B3B; --accent-line:#1D5A78;
-  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; --sample:#738396; color-scheme:dark}}
+  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1620; --panel:#15202C; --ink:#E5EDF5; --muted:#9AA9B9; --faint:#738396;
   --line:#243444; --line-strong:#33475B; --head:#192634;
   --accent:#00AEEF; --accent-hover:#33C3F5; --accent-ink:#03202F; --accent-text:#5ECDF7; --accent-soft:#0F2B3B; --accent-line:#1D5A78;
-  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; --sample:#738396; color-scheme:dark}
+  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
 .wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:18px 56px;display:flex;flex-direction:column;gap:16px}
 
@@ -152,8 +152,6 @@ input::placeholder{color:var(--faint)}
 .status.warn{background:var(--warn-soft);color:var(--warn)}
 .status.err{background:var(--warn-soft);color:var(--bad)}
 .okmsg{font-size:13px;color:var(--ok)}
-.sample-badge{font-size:12px;font-weight:600;color:var(--accent-text);background:var(--accent-soft);padding:3px 9px;border-radius:6px}
-.sample td{color:var(--sample)!important}
 
 /* 결과 표: 핵심 현황 → 용도지역 구성 순서로 읽히게 */
 .tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-card);position:relative}
@@ -244,9 +242,8 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
     <p id="runStatus" class="hint"></p>
   </section>
 
-  <section class="step" aria-labelledby="s3">
+  <section class="step" aria-labelledby="s3" id="resultSec" hidden>
     <h2 id="s3"><span class="no">2</span>결과</h2>
-    <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div>
       <div class="rt" id="tableWrap"><div class="rt-core"><table id="resultTable"></table></div><div class="rt-zone" id="tableBox"><table id="zoneTable"></table></div></div>
       <div class="tablefoot"><span class="hint" id="sumNote" hidden>합계는 구역별 결과를 더한 값입니다. 서로 겹치는 구역은 중복 포함될 수 있습니다.</span><span class="scrollhint" id="scrollHint" hidden>용도지역은 옆으로 넘겨 보세요 <span class="arr">→</span></span></div>
@@ -620,10 +617,6 @@ function zoneCols(rows){
   [...present].filter(z=>!ZONE_ORDER.includes(z)).sort().forEach(z=>cols.push(z));
   return cols;
 }
-const SAMPLE = [ // 예시: 성장잠재권형 '도심주변'·'광역' 계산값(참고용)
-  {name:"도심주변", total:1709361, n:7661, area:1546071, units:20389, res:1323105, non:1873368, zone:{"일반상업지역":274866,"제2종일반주거지역":0}},
-  {name:"광역", total:288217, n:763, area:260428, units:1967, res:102280, non:82994, zone:{"일반상업지역":23671}},
-];
 const CORE = [["총 면적","㎡","total"],["필지수","","n"],["필지면적","㎡","area"],["주거 세대수","","units"],["주거연면적","㎡","res"],["비주거연면적","㎡","non"]];
 // 합계: 구역별로 반올림한 값을 더함(표·엑셀에서 각 행을 더한 값과 같게). 겹친 구역은 중복될 수 있음
 function totalRow(rows, zc){
@@ -632,27 +625,27 @@ function totalRow(rows, zc){
   for (const z of zc) t.zone[z] = rows.reduce((a, r) => a + Math.round(r.zone[z] || 0), 0);
   return t;
 }
+// 결과 영역은 구역을 넣거나 그려 계산이 끝났을 때만 보임(예시 화면 없음)
 function renderResults(){
-  const rows = results ? results.rows : SAMPLE;
-  $("#sampleBadge").hidden = !!results;
-  const zc = results ? zoneCols(rows) : ["일반상업지역"];
+  $("#resultSec").hidden = !results; $("#xlsxBtn").disabled = !results;
+  if (!results) { $("#popBox").hidden = true; return; }
+  const rows = results.rows;
+  const zc = zoneCols(rows);
   const tot = totalRow(rows, zc);
-  const dot = r => results ? `<i class="dot" style="background:${colorOf(r.name)}"></i>` : "";
+  const dot = r => `<i class="dot" style="background:${colorOf(r.name)}"></i>`;
   const zv = v => v > 0 ? fmt(v) : '<span class="zero">–</span>';
-  const bodyCls = results ? "" : "sample";
   $("#resultTable").innerHTML = `<thead>
     <tr><th rowspan="2" class="namecol">구역</th><th colspan="${CORE.length}" class="grp core">핵심 현황</th></tr>
     <tr>${CORE.map(c=>`<th class="num core">${c[0]}${c[1]?`<small>${c[1]}</small>`:""}</th>`).join("")}</tr></thead>
-    <tbody class="${bodyCls}">${rows.map(r=>`<tr><td class="namecol">${dot(r)}${esc(r.name)}</td>${CORE.map(c=>`<td class="num core">${fmt(r[c[2]])}</td>`).join("")}</tr>`).join("")}
+    <tbody>${rows.map(r=>`<tr><td class="namecol">${dot(r)}${esc(r.name)}</td>${CORE.map(c=>`<td class="num core">${fmt(r[c[2]])}</td>`).join("")}</tr>`).join("")}
     <tr class="total"><td class="namecol">합계</td>${CORE.map(c=>`<td class="num core">${fmt(tot[c[2]])}</td>`).join("")}</tr></tbody>`;
   $("#zoneTable").innerHTML = `<thead>
     <tr><th colspan="${zc.length}" class="grp zone">용도지역 구성 <small>(㎡)</small></th></tr>
     <tr>${zc.map(z=>`<th class="num${z==="일반상업지역"?" gs":""}">${esc(z)}</th>`).join("")}</tr></thead>
-    <tbody class="${bodyCls}">${rows.map(r=>`<tr>${zc.map(z=>`<td class="num z${z==="일반상업지역"?" gs":""}">${zv(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}
+    <tbody>${rows.map(r=>`<tr>${zc.map(z=>`<td class="num z${z==="일반상업지역"?" gs":""}">${zv(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}
     <tr class="total">${zc.map(z=>`<td class="num z">${zv(tot.zone[z])}</td>`).join("")}</tr></tbody>`;
   $("#sumNote").hidden = false;
   syncRows();
-  $("#xlsxBtn").disabled = !results;
   updateScrollHint();
   const pb=$("#popBox"); pb.hidden = !results;
   if (results) {
