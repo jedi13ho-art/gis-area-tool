@@ -174,6 +174,21 @@ tbody tr:hover td{background:#FAFCFE}
 details.basis{font-size:13px;color:var(--muted)}
 details.basis summary{cursor:pointer;color:var(--muted);font-weight:500}
 details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:96ch}
+.lyr{position:relative;display:flex;flex-direction:column;align-items:flex-end}
+.lyr>button{display:inline-flex;align-items:center;gap:6px}
+.lyr>button[aria-expanded="true"]{border-color:var(--accent);color:var(--accent-text)}
+.lyr .menu{margin-top:4px;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(16,36,58,.16);min-width:170px}
+.lyr .menu label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.lyr .menu input{accent-color:#00AFF0;width:15px;height:15px}
+.lyr .menu .sw{width:14px;height:14px;border-radius:3px;border:1.5px solid #C0182F;background:repeating-linear-gradient(135deg,rgba(192,24,47,.55) 0 2px,rgba(192,24,47,.08) 2px 5px)}
+.lyr .menu p{margin:6px 0 0;font-size:11px;color:var(--faint);white-space:normal;max-width:200px}
+.legend{background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:7px 9px;font-size:11.5px;color:var(--ink);display:flex;flex-direction:column;gap:3px;max-width:220px;box-shadow:0 2px 8px rgba(16,36,58,.12)}
+.legend .li{display:flex;align-items:center;gap:6px}
+.legend .li i{width:14px;height:10px;border-radius:2px;border:1px solid rgba(60,70,90,.25);flex:none}
+.legend .src{color:var(--faint);font-size:10.5px;margin-top:3px;line-height:1.35}
+.zntip{position:absolute;z-index:790;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px;font-size:12px;box-shadow:0 2px 8px rgba(16,36,58,.14);white-space:nowrap;transform:translate(12px,-120%)}
+.zntip i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(60,70,90,.3)}
+.zntip small{color:var(--faint);margin-left:6px}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 /* Leaflet 1.9.4 CSS (BSD-2, 이미지 규칙 제외) */  .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; } .leaflet-container { overflow: hidden; } .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-user-drag: none; } .leaflet-tile::selection { background: transparent; } .leaflet-safari .leaflet-tile { image-rendering: -webkit-optimize-contrast; } .leaflet-safari .leaflet-tile-container { width: 1600px; height: 1600px; -webkit-transform-origin: 0 0; } .leaflet-marker-icon, .leaflet-marker-shadow { display: block; } .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; } .leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile { max-width: none !important; max-height: none !important; width: auto; padding: 0; } .leaflet-container img.leaflet-tile { mix-blend-mode: plus-lighter; } .leaflet-container.leaflet-touch-zoom { -ms-touch-action: pan-x pan-y; touch-action: pan-x pan-y; } .leaflet-container.leaflet-touch-drag { -ms-touch-action: pinch-zoom; touch-action: none; touch-action: pinch-zoom; } .leaflet-container.leaflet-touch-drag.leaflet-touch-zoom { -ms-touch-action: none; touch-action: none; } .leaflet-container { -webkit-tap-highlight-color: transparent; } .leaflet-container a { -webkit-tap-highlight-color: rgba(51, 181, 229, 0.4); } .leaflet-tile { filter: inherit; visibility: hidden; } .leaflet-tile-loaded { visibility: inherit; } .leaflet-zoom-box { width: 0; height: 0; -moz-box-sizing: border-box; box-sizing: border-box; z-index: 800; } .leaflet-overlay-pane svg { -moz-user-select: none; } .leaflet-pane { z-index: 400; } .leaflet-tile-pane { z-index: 200; } .leaflet-overlay-pane { z-index: 400; } .leaflet-shadow-pane { z-index: 500; } .leaflet-marker-pane { z-index: 600; } .leaflet-tooltip-pane { z-index: 650; } .leaflet-popup-pane { z-index: 700; } .leaflet-map-pane canvas { z-index: 100; } .leaflet-map-pane svg { z-index: 200; } .leaflet-vml-shape { width: 1px; height: 1px; } .leaflet-control { position: relative; z-index: 800; pointer-events: visiblePainted; pointer-events: auto; } .leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; } .leaflet-top { top: 0; } .leaflet-right { right: 0; } .leaflet-bottom { bottom: 0; } .leaflet-left { left: 0; } .leaflet-control { float: left; clear: both; } .leaflet-right .leaflet-control { float: right; } .leaflet-top .leaflet-control { margin-top: 10px; } .leaflet-bottom .leaflet-control { margin-bottom: 10px; } .leaflet-left .leaflet-control { margin-left: 10px; } .leaflet-right .leaflet-control { margin-right: 10px; } .leaflet-fade-anim .leaflet-popup { opacity: 0; -webkit-transition: opacity 0.2s linear; -moz-transition: opacity 0.2s linear; transition: opacity 0.2s linear; } .leaflet-fade-anim .leaflet-map-pane .leaflet-popup { opacity: 1; } .leaflet-zoom-animated { -webkit-transform-origin: 0 0; -ms-transform-origin: 0 0; transform-origin: 0 0; } svg.leaflet-zoom-animated { will-change: transform; } .leaflet-zoom-anim .leaflet-zoom-animated { -webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1); -moz-transition: -moz-transform 0.25s cubic-bezier(0,0,0.25,1); transition: transform 0.25s cubic-bezier(0,0,0.25,1); } .leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile { -webkit-transition: none; -moz-transition: none; transition: none; } .leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; } .leaflet-interactive { cursor: pointer; } .leaflet-grab { cursor: -webkit-grab; cursor: -moz-grab; cursor: grab; } .leaflet-crosshair, .leaflet-crosshair .leaflet-interactive { cursor: crosshair; } .leaflet-popup-pane, .leaflet-control { cursor: auto; } .leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive, .leaflet-dragging .leaflet-marker-draggable { cursor: move; cursor: -webkit-grabbing; cursor: -moz-grabbing; cursor: grabbing; } .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none; } .leaflet-marker-icon.leaflet-interactive, .leaflet-image-layer.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive, svg.leaflet-image-layer.leaflet-interactive path { pointer-events: visiblePainted; pointer-events: auto; } .leaflet-container { background: #ddd; outline-offset: 1px; } .leaflet-container a { color: #0078A8; } .leaflet-zoom-box { border: 2px dotted #38f; background: rgba(255,255,255,0.5); } .leaflet-container { font-family: "Helvetica Neue", Arial, Helvetica, sans-serif; font-size: 12px; font-size: 0.75rem; line-height: 1.5; } .leaflet-bar { box-shadow: 0 1px 5px rgba(0,0,0,0.65); border-radius: 4px; } .leaflet-bar a { background-color: #fff; border-bottom: 1px solid #ccc; width: 26px; height: 26px; line-height: 26px; display: block; text-align: center; text-decoration: none; color: black; } .leaflet-bar a, .leaflet-control-layers-toggle { background-position: 50% 50%; background-repeat: no-repeat; display: block; } .leaflet-bar a:hover, .leaflet-bar a:focus { background-color: #f4f4f4; } .leaflet-bar a:first-child { border-top-left-radius: 4px; border-top-right-radius: 4px; } .leaflet-bar a:last-child { border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; border-bottom: none; } .leaflet-bar a.leaflet-disabled { cursor: default; background-color: #f4f4f4; color: #bbb; } .leaflet-touch .leaflet-bar a { width: 30px; height: 30px; line-height: 30px; } .leaflet-touch .leaflet-bar a:first-child { border-top-left-radius: 2px; border-top-right-radius: 2px; } .leaflet-touch .leaflet-bar a:last-child { border-bottom-left-radius: 2px; border-bottom-right-radius: 2px; } .leaflet-control-zoom-in, .leaflet-control-zoom-out { font: bold 18px 'Lucida Console', Monaco, monospace; text-indent: 1px; } .leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out { font-size: 22px; } .leaflet-control-layers { box-shadow: 0 1px 5px rgba(0,0,0,0.4); background: #fff; border-radius: 5px; } .leaflet-touch .leaflet-control-layers-toggle { width: 44px; height: 44px; } .leaflet-control-layers .leaflet-control-layers-list, .leaflet-control-layers-expanded .leaflet-control-layers-toggle { display: none; } .leaflet-control-layers-expanded .leaflet-control-layers-list { display: block; position: relative; } .leaflet-control-layers-expanded { padding: 6px 10px 6px 6px; color: #333; background: #fff; } .leaflet-control-layers-scrollbar { overflow-y: scroll; overflow-x: hidden; padding-right: 5px; } .leaflet-control-layers-selector { margin-top: 2px; position: relative; top: 1px; } .leaflet-control-layers label { display: block; font-size: 13px; font-size: 1.08333em; } .leaflet-control-layers-separator { height: 0; border-top: 1px solid #ddd; margin: 5px -10px 5px -6px; } .leaflet-container .leaflet-control-attribution { background: #fff; background: rgba(255, 255, 255, 0.8); margin: 0; } .leaflet-control-attribution, .leaflet-control-scale-line { padding: 0 5px; color: #333; line-height: 1.4; } .leaflet-control-attribution a { text-decoration: none; } .leaflet-control-attribution a:hover, .leaflet-control-attribution a:focus { text-decoration: underline; } .leaflet-attribution-flag { display: inline !important; vertical-align: baseline !important; width: 1em; height: 0.6669em; } .leaflet-left .leaflet-control-scale { margin-left: 5px; } .leaflet-bottom .leaflet-control-scale { margin-bottom: 5px; } .leaflet-control-scale-line { border: 2px solid #777; border-top: none; line-height: 1.1; padding: 2px 5px 1px; white-space: nowrap; -moz-box-sizing: border-box; box-sizing: border-box; background: rgba(255, 255, 255, 0.8); text-shadow: 1px 1px #fff; } .leaflet-control-scale-line:not(:first-child) { border-top: 2px solid #777; border-bottom: none; margin-top: -2px; } .leaflet-control-scale-line:not(:first-child):not(:last-child) { border-bottom: 2px solid #777; } .leaflet-touch .leaflet-control-attribution, .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { box-shadow: none; } .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { border: 2px solid rgba(0,0,0,0.2); background-clip: padding-box; } .leaflet-popup { position: absolute; text-align: center; margin-bottom: 20px; } .leaflet-popup-content-wrapper { padding: 1px; text-align: left; border-radius: 12px; } .leaflet-popup-content { margin: 13px 24px 13px 20px; line-height: 1.3; font-size: 13px; font-size: 1.08333em; min-height: 1px; } .leaflet-popup-content p { margin: 17px 0; margin: 1.3em 0; } .leaflet-popup-tip-container { width: 40px; height: 20px; position: absolute; left: 50%; margin-top: -1px; margin-left: -20px; overflow: hidden; pointer-events: none; } .leaflet-popup-tip { width: 17px; height: 17px; padding: 1px; margin: -10px auto 0; pointer-events: auto; -webkit-transform: rotate(45deg); -moz-transform: rotate(45deg); -ms-transform: rotate(45deg); transform: rotate(45deg); } .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: white; color: #333; box-shadow: 0 3px 14px rgba(0,0,0,0.4); } .leaflet-container a.leaflet-popup-close-button { position: absolute; top: 0; right: 0; border: none; text-align: center; width: 24px; height: 24px; font: 16px/24px Tahoma, Verdana, sans-serif; color: #757575; text-decoration: none; background: transparent; } .leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus { color: #585858; } .leaflet-popup-scrolled { overflow: auto; } .leaflet-oldie .leaflet-popup-content-wrapper { -ms-zoom: 1; } .leaflet-oldie .leaflet-popup-tip { width: 24px; margin: 0 auto; -ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)"; filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678); } .leaflet-oldie .leaflet-control-zoom, .leaflet-oldie .leaflet-control-layers, .leaflet-oldie .leaflet-popup-content-wrapper, .leaflet-oldie .leaflet-popup-tip { border: 1px solid #999; } .leaflet-div-icon { background: #fff; border: 1px solid #666; } .leaflet-tooltip { position: absolute; padding: 6px; background-color: #fff; border: 1px solid #fff; border-radius: 3px; color: #222; white-space: nowrap; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.4); } .leaflet-tooltip.leaflet-interactive { cursor: pointer; pointer-events: auto; } .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { position: absolute; pointer-events: none; border: 6px solid transparent; background: transparent; content: ""; } .leaflet-tooltip-bottom { margin-top: 6px; } .leaflet-tooltip-top { margin-top: -6px; } .leaflet-tooltip-bottom:before, .leaflet-tooltip-top:before { left: 50%; margin-left: -6px; } .leaflet-tooltip-top:before { bottom: 0; margin-bottom: -12px; border-top-color: #fff; } .leaflet-tooltip-bottom:before { top: 0; margin-top: -12px; margin-left: -6px; border-bottom-color: #fff; } .leaflet-tooltip-left { margin-left: -6px; } .leaflet-tooltip-right { margin-left: 6px; } .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { top: 50%; margin-top: -6px; } .leaflet-tooltip-left:before { right: 0; margin-right: -12px; border-left-color: #fff; } .leaflet-tooltip-right:before { left: 0; margin-left: -12px; border-right-color: #fff; } @media print { .leaflet-control { -webkit-print-color-adjust: exact; print-color-adjust: exact; } } 
@@ -698,17 +713,21 @@ map.fitBounds(SEOUL_VIEW, { animate: false });
 setTimeout(() => { map.invalidateSize(false); }, 300);
 const vw = (layer, ext) => L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${ext}`,
   { minZoom: 6, maxNativeZoom: 19, maxZoom: 20, attribution: "배경지도 © 국토교통부 브이월드" });
-const BASEMAPS = { base: [vw("Base", "png")], sat: [vw("Satellite", "jpeg"), vw("Hybrid", "png")] };
+const BASEMAPS = { base: [vw("Base", "png")], sat: [vw("Satellite", "jpeg"), vw("Hybrid", "png")], zone: [vw("white", "png")] };
 let baseKind = "base"; BASEMAPS.base.forEach(t => t.addTo(map));
 function setBase(kind) {
   if (kind === baseKind) return; BASEMAPS[baseKind].forEach(t => map.removeLayer(t)); BASEMAPS[kind].forEach(t => t.addTo(map).bringToBack());
   baseKind = kind; document.querySelectorAll(".basebtn").forEach(b => b.classList.toggle("on", b.dataset.k === kind)); parcels.redraw();
   if (seoulMask) seoulMask.setStyle({ fillOpacity: MASK_OPACITY[kind] });
+  updateZoningLayers();
 }
 L.control.scale({ imperial: false, maxWidth: 140, position: "bottomleft" }).addTo(map);
 const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
   const d = L.DomUtil.create("div", "mapinfo"); L.DomEvent.disableClickPropagation(d);
-  d.innerHTML = `<div class="basesw"><button type="button" class="basebtn on" data-k="base">일반지도</button><button type="button" class="basebtn" data-k="sat">위성</button></div>
+  d.innerHTML = `<div class="basesw"><button type="button" class="basebtn on" data-k="base">일반지도</button><button type="button" class="basebtn" data-k="sat">위성</button><button type="button" class="basebtn" data-k="zone">용도지역</button></div>
+    <div class="lyr" id="lyr"><button type="button" id="lyrBtn" aria-expanded="false" aria-controls="lyrMenu">용도지역 표시 ▾</button>
+      <div class="menu" id="lyrMenu" hidden><label><input type="checkbox" id="gsChk"><span class="sw" aria-hidden="true"></span>일반상업지역</label>
+      <p>지도 종류와 상관없이 일반상업지역을 빗금으로 겹쳐 보여줍니다.</p></div></div>
     <button type="button" id="homeBtn">서울 전체</button><span id="mapLoad" hidden>필지 불러오는 중…</span><span id="zoomHint"></span>`;
   return d; } });
 new MapInfo().addTo(map);
@@ -751,12 +770,127 @@ const ParcelLayer = L.GridLayer.extend({
   }
 });
 const parcels = new ParcelLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 5, updateWhenZooming: false }).addTo(map);
+/* ==================== 용도지역 지도 (공식 도형: 브이월드 LT_C_UQ111을 미리 받아 1km 칸으로 저장) ====================
+   지도 우선순위: 입력 구역(overlayPane) > 일반상업 강조(z 4) > 전체 용도지역(z 3) > 배경지도. 지적선은 z 5(선만). */
+const ZN_COLOR = {"제1종전용주거지역":"#F3EBC0","제2종전용주거지역":"#EFE3A6","전용주거지역":"#EFE3A6","제1종일반주거지역":"#F2E2A0",
+  "제2종일반주거지역":"#E9D27E","제3종일반주거지역":"#DDBE61","일반주거지역":"#E9D27E","준주거지역":"#E7B489",
+  "중심상업지역":"#D88E95","일반상업지역":"#E3A2A6","근린상업지역":"#EBBDBF","유통상업지역":"#DDA9C4",
+  "전용공업지역":"#B3A4D6","일반공업지역":"#BFB2DC","준공업지역":"#C9BEE3",
+  "보전녹지지역":"#A9CF9C","생산녹지지역":"#C6E0B0","자연녹지지역":"#BCDDB0","도시지역기타":"#D5DBE1"};
+const ZN_LEGEND = [["주거지역","#E9D27E"],["준주거지역","#E7B489"],["상업지역","#E3A2A6"],["공업지역","#C9BEE3"],["녹지지역","#BCDDB0"]];
+const GS = "일반상업지역", GS_STROKE = "#C0182F";
+const ZN_OV_Z = 14;     // 이 배율 미만은 서울 전체 개관용(단순화) 도형, 이상은 1km 칸 상세 도형
+let ZN_META = null, ZN_OV = null, gsOn = false;
+const ZNC = new Map();
+const loadZnMeta = () => { if (!ZN_META) { ZN_META = fetch("data/zn_meta.json").then(r => r.json()); ZN_META.catch(() => { ZN_META = null; }); } return ZN_META; };   // 한 번만 받음
+function znParse(buf) { return JSON.parse(new TextDecoder().decode(buf)).map(([z, rings]) => {
+  const rs = rings.map(r => { const a = new Float64Array(r.length); for (let i = 0; i < r.length; i++) a[i] = r[i] / 10; return a; });
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const e = rs[0];
+  for (let i = 0; i < e.length; i += 2) { if (e[i] < x0) x0 = e[i]; if (e[i] > x1) x1 = e[i]; if (e[i+1] < y0) y0 = e[i+1]; if (e[i+1] > y1) y1 = e[i+1]; }
+  return { z, rs, bb: [x0, y0, x1, y1] }; }); }
+function loadZnCell(k) {   // 같은 칸은 한 번만 받음(실패하면 다음에 다시)
+  if (!ZNC.has(k)) { const pr = fetchBin(`data/zn_${k}.dat`).then(znParse); ZNC.set(k, pr); pr.catch(() => ZNC.delete(k)); }
+  return ZNC.get(k);
+}
+function loadZnOv() { if (!ZN_OV) { ZN_OV = fetchBin("data/zn_overview.dat").then(znParse); ZN_OV.catch(() => { ZN_OV = null; }); } return ZN_OV; }
+async function znPolysIn(x0, y0, x1, y1, z) {
+  const m = await loadZnMeta();
+  const list = z < ZN_OV_Z ? await loadZnOv()
+    : (await Promise.all(m.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1)).map(c => loadZnCell(c.k)))).flat();
+  return { m, list: list.filter(q => !(q.bb[2] < x0 || q.bb[0] > x1 || q.bb[3] < y0 || q.bb[1] > y1)) };
+}
+let gsPattern = null;
+function hatch(ctx) {
+  if (!gsPattern) { const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d");
+    g.strokeStyle = "rgba(192,24,47,.55)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke(); gsPattern = c; }
+  return ctx.createPattern(gsPattern, "repeat");
+}
+// 타일 모서리 → 5186 변환을 만들어 도형을 그리는 공용 캔버스 층 (지적선 층과 같은 방식)
+function tileXform(coords) {
+  const T = 256, nwP = coords.scaleBy(L.point(T, T));
+  const c0 = XY(map.unproject(nwP, coords.z)), c1 = XY(map.unproject(nwP.add([T, 0]), coords.z)),
+        c2 = XY(map.unproject(nwP.add([0, T]), coords.z)), c3 = XY(map.unproject(nwP.add([T, T]), coords.z));
+  const ux = c1[0] - c0[0], uy = c1[1] - c0[1], vx = c2[0] - c0[0], vy = c2[1] - c0[1], det = ux * vy - vx * uy;
+  const a = T * vy / det, b = -T * vx / det, c = -T * uy / det, e = T * ux / det;
+  return { P: (x, y) => { const dx = x - c0[0], dy = y - c0[1]; return [a * dx + b * dy, c * dx + e * dy]; },
+    box: [Math.min(c0[0], c1[0], c2[0], c3[0]), Math.min(c0[1], c1[1], c2[1], c3[1]), Math.max(c0[0], c1[0], c2[0], c3[0]), Math.max(c0[1], c1[1], c2[1], c3[1])] };
+}
+function znPath(ctx, P, q) { ctx.beginPath(); for (const r of q.rs) { for (let k = 0; k < r.length; k += 2) { const t = P(r[k], r[k+1]); k ? ctx.lineTo(t[0], t[1]) : ctx.moveTo(t[0], t[1]); } ctx.closePath(); } }
+const ZnLayer = L.GridLayer.extend({
+  createTile(coords, done) {
+    const tile = document.createElement("canvas"); tile.width = tile.height = 256; const ctx = tile.getContext("2d"); const gsOnly = this.options.gsOnly;
+    const { P, box } = tileXform(coords);
+    znPolysIn(box[0] - 5, box[1] - 5, box[2] + 5, box[3] + 5, coords.z).then(({ m, list }) => {
+      for (const q of list) {
+        const name = m.zones[q.z];
+        if (gsOnly) {
+          if (name !== GS) continue;
+          znPath(ctx, P, q); ctx.fillStyle = "rgba(192,24,47,.10)"; ctx.fill("evenodd"); ctx.fillStyle = hatch(ctx); ctx.fill("evenodd");
+          ctx.strokeStyle = GS_STROKE; ctx.globalAlpha = .85; ctx.lineWidth = coords.z >= 15 ? 1.6 : 1.1; ctx.stroke(); ctx.globalAlpha = 1;
+        } else {
+          znPath(ctx, P, q); ctx.fillStyle = ZN_COLOR[name] || "#D5DBE1"; ctx.globalAlpha = .55; ctx.fill("evenodd");
+          ctx.globalAlpha = .35; ctx.strokeStyle = "#5C6B7E"; ctx.lineWidth = coords.z >= 15 ? .8 : .5; ctx.stroke(); ctx.globalAlpha = 1;
+        }
+      }
+      done(null, tile);
+    }).catch(err => { console.error(err); done(null, tile); });
+    return tile;
+  }
+});
+const znLayer = new ZnLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 3, updateWhenZooming: false });
+const gsLayer = new ZnLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 4, updateWhenZooming: false, gsOnly: true });
+// 범례(용도지역 지도 또는 일반상업 강조가 켜졌을 때만)
+const Legend = L.Control.extend({ options: { position: "bottomright" }, onAdd() { const d = L.DomUtil.create("div", "legend"); d.id = "znLegend"; L.DomEvent.disableClickPropagation(d); return d; } });
+new Legend().addTo(map);
+function updateZoningLayers() {
+  const showZn = baseKind === "zone";
+  if (showZn && !map.hasLayer(znLayer)) znLayer.addTo(map); else if (!showZn && map.hasLayer(znLayer)) map.removeLayer(znLayer);
+  if (gsOn && !map.hasLayer(gsLayer)) gsLayer.addTo(map); else if (!gsOn && map.hasLayer(gsLayer)) map.removeLayer(gsLayer);
+  const lg = document.getElementById("znLegend"); if (!lg) return;
+  if (!showZn && !gsOn) { lg.hidden = true; znTip.hidden = true; return; }
+  lg.hidden = false;
+  loadZnMeta().then(m => { lg.innerHTML = (showZn ? ZN_LEGEND.map(([n, c]) => `<span class="li"><i style="background:${c}"></i>${n}</span>`).join("") : "") +
+    (gsOn ? `<span class="li"><i style="background:repeating-linear-gradient(135deg,rgba(192,24,47,.55) 0 2px,rgba(192,24,47,.08) 2px 5px);border-color:${GS_STROKE}"></i>일반상업지역 강조</span>` : "") +
+    `<span class="src">용도지역: ${esc(m.source)}, ${esc(m.fetched)} 받음. 마우스를 올리면 이름이 보입니다.</span>`; });
+}
+// 마우스를 올리면 그 자리 용도지역 이름(용도지역 지도 또는 일반상업 강조가 켜졌을 때만)
+const znTip = L.DomUtil.create("div", "zntip", map.getContainer()); znTip.hidden = true;
+let znTipTimer = null;
+map.on("mousemove", e => {
+  if (drawing || (baseKind !== "zone" && !gsOn)) { znTip.hidden = true; return; }
+  clearTimeout(znTipTimer);
+  znTipTimer = setTimeout(async () => {
+    const [x, y] = XY(e.latlng); const { m, list } = await znPolysIn(x - 1, y - 1, x + 1, y + 1, map.getZoom());
+    let hit = null;
+    for (const q of list) { if (!inRing(x, y, ringPts(q.rs[0]))) continue; let hole = false; for (let k = 1; k < q.rs.length; k++) if (inRing(x, y, ringPts(q.rs[k]))) { hole = true; break; } if (!hole) { hit = q; break; } }
+    if (!hit || drawing) { znTip.hidden = true; return; }
+    const name = m.zones[hit.z]; const cp = e.containerPoint;
+    znTip.innerHTML = `<i style="background:${ZN_COLOR[name] || "#D5DBE1"}"></i><b>${esc(name)}</b><small>공식 용도지역</small>`;
+    znTip.style.left = cp.x + "px"; znTip.style.top = cp.y + "px"; znTip.hidden = false;
+  }, 60);
+});
+map.on("mouseout", () => { znTip.hidden = true; });
+const ringPts = r => { const out = new Array(r.length / 2); for (let i = 0; i < r.length; i += 2) out[i / 2] = [r[i], r[i + 1]]; return out; };
+// '용도지역 표시' 메뉴: 마우스를 올리면 펼치고, 누르면 고정, 바깥을 누르면 닫힘
+setTimeout(() => {
+  const lyr = document.getElementById("lyr"), btn = document.getElementById("lyrBtn"), menu = document.getElementById("lyrMenu"), chk = document.getElementById("gsChk");
+  let pinned = false, closeT = null;
+  const open = v => { menu.hidden = !v; btn.setAttribute("aria-expanded", String(v)); };
+  btn.addEventListener("click", () => { pinned = !(pinned && !menu.hidden); open(pinned || menu.hidden); });
+  lyr.addEventListener("mouseenter", () => { clearTimeout(closeT); open(true); });
+  lyr.addEventListener("mouseleave", () => { if (!pinned) closeT = setTimeout(() => open(false), 500); });
+  document.addEventListener("click", e => { if (!lyr.contains(e.target)) { pinned = false; open(false); } });
+  chk.addEventListener("change", () => { gsOn = chk.checked; pinned = true; updateZoningLayers(); });
+  L.DomEvent.disableClickPropagation(lyr); L.DomEvent.disableScrollPropagation(lyr);
+  updateZoningLayers();
+}, 0);
+
 const overlay = L.layerGroup().addTo(map);
 const labelLayer = L.layerGroup().addTo(map);
 
 /* 서울 밖은 반투명 흰 마스크로 흐리게, 서울 경계는 하늘색 선. 지도 조작을 막지 않도록 클릭이 통과하는 별도 층에 둠 */
 map.createPane("seoulMask"); map.getPane("seoulMask").style.zIndex = 350; map.getPane("seoulMask").style.pointerEvents = "none";
-const MASK_OPACITY = { base: 0.45, sat: 0.35 };   // 흰 마스크 불투명도(= 55~65% 투명)
+const MASK_OPACITY = { base: 0.45, sat: 0.35, zone: 0.5 };   // 흰 마스크 불투명도(= 55~65% 투명)
 let seoulMask = null;
 fetchBin("data/seoul.dat").then(b => {
   const rings = JSON.parse(new TextDecoder().decode(b));
@@ -791,6 +925,7 @@ function drawOverlays() {
   for (const [k, g] of groups) {
     const color = colorOf(k);
     if (hiddenKeys.has(k) || !g.xy.length) continue;
+    L.polygon(g.ll, { color: "#FFFFFF", weight: 5, opacity: .9, fill: false, interactive: false }).addTo(overlay);   // 흰 테두리(용도지역·위성 위에서도 경계가 묻히지 않게)
     const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2 }).addTo(overlay));
     for (const sh of shapes) {
       sh.on("mouseover", () => { if (drawing) return; hoverKey = k; styleZones(); placeLabels(); });
@@ -930,7 +1065,9 @@ async function goTo(bi, m) {
 $("#qBtn").addEventListener("click", findParcel);
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") findParcel(); });
 
-$("#basis").innerHTML = BASIS.map(b=>`<li>${esc(b)}</li>`).join("");
+const MAP_NOTES = ["지도의 용도지역·일반상업지역 표시는 공식 용도지역 도형(브이월드 2D데이터 LT_C_UQ111, 국토교통부 도시계획 정보)을 미리 받아 그린 것입니다. 받은 날짜는 지도 범례에 표시됩니다.",
+  "결과표·엑셀의 용도지역별 면적은 필지별 대표 용도지역 기준이라, 한 필지가 여러 용도지역에 걸치면 지도 경계와 차이가 있을 수 있습니다."];
+$("#basis").innerHTML = BASIS.concat(MAP_NOTES).map(b=>`<li>${esc(b)}</li>`).join("");
 renderResults();
 </script>
 
