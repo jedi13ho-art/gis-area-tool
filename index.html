@@ -28,23 +28,22 @@
   --accent:#00AFF0; --accent-ink:#03202F; --accent-text:#5ECDF7; --accent-soft:#0F2B3B; --accent-line:#1D5A78;
   --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; --sample:#738396; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
-.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:24px 64px;display:flex;flex-direction:column;gap:18px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:18px 56px;display:flex;flex-direction:column;gap:14px}
 
 /* 머리말 */
-.brand{display:flex;flex-direction:column;gap:6px}
-.brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:0}
+.brand-row{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap}
+.brand-row .mark{align-self:center}
 .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);position:relative;flex:none;
   background-image:linear-gradient(var(--panel),var(--panel)),linear-gradient(var(--panel),var(--panel));
   background-size:16px 2px,2px 16px;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 7px var(--accent)}
 .brand h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.1}
-.brand .slogan{font-size:15px;font-weight:500;color:var(--accent-text)}
-.brand p{margin:0;color:var(--muted);max-width:72ch;font-size:14px}
-.ver{display:inline-flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.chip{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+.brand .slogan{font-size:15px;font-weight:700;color:#FF6A00}
+.brand .desc{font-size:14px;color:var(--muted)}
 
-section.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+section.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .step h2{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
-.step h2 .no{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-size:13px;font-weight:700;border:1px solid var(--accent-line)}
+.step h2 .no{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#FFF2E8;color:#D45200;font-size:13px;font-weight:700;border:1px solid #FFC59C}
 .hint{color:var(--muted);font-size:13px;margin:0}
 
 /* 버튼 */
@@ -62,7 +61,16 @@ section.step{background:var(--panel);border:1px solid var(--line);border-radius:
 
 /* 지도 도구 */
 .maptools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.maptools input[type=text]{width:22ch}
+.maptools input[type=text]{width:16ch}
+.search{display:inline-flex;align-items:stretch}
+.search input[type=text]{border-radius:8px 0 0 8px;border-right:none}
+.iconbtn{display:inline-grid;place-items:center;min-width:38px;min-height:36px;padding:0 9px;border:1px solid var(--line-strong);border-radius:0 8px 8px 0;background:var(--panel);color:var(--muted);cursor:pointer}
+.iconbtn:hover{color:var(--accent-text);border-color:var(--accent)}
+.iconbtn:focus-visible{outline:3px solid var(--accent-line);outline-offset:2px}
+/* 직접 지정: 입력 방법 중 하나라 연한 하늘색(엑셀 받기보다 약하게), 지정 중에만 조금 진하게 */
+.btn.soft{background:#EEF9FE;border-color:#B5E5F8;color:#0070A8}
+.btn.soft:hover:not(:disabled){background:#DDF3FC;border-color:#7FD3F5;color:#005C8A}
+.btn.soft.active,.btn.soft.active:disabled{background:#CDEDFB;border-color:#00AFF0;color:#04263B;cursor:default}
 input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);color:var(--ink);min-width:0}
 .hits{display:flex;gap:6px;flex-wrap:wrap}
 .hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
@@ -96,16 +104,14 @@ input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--lin
 .leaflet-control-scale-line{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--muted)!important}
 
 /* 파일 넣기: 구역이 생기면 한 줄로 작아짐 */
-#drop{border:1.5px dashed var(--line-strong);border-radius:10px;padding:18px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:4px;align-items:center}
+#drop{border:1.5px dashed var(--line-strong);border-radius:10px;padding:12px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:2px 10px}
 #drop:hover,#drop:focus-visible,#drop.over{border-color:var(--accent);background:var(--accent-soft);outline:none}
-#drop strong{font-size:16px}
-#drop .short{display:none}
-#drop.compact{padding:8px 14px;flex-direction:row;justify-content:center;gap:10px}
+#drop .dt{font-size:15px;font-weight:600;color:var(--accent-text)}
+#drop .ext{font-size:13px;color:var(--muted);font-family:var(--f-num)}
+#drop small{flex-basis:100%;font-size:12px;color:var(--faint)}
+#drop.compact{padding:7px 14px}
+#drop.compact .dt{font-size:13.5px}
 #drop.compact .full{display:none}
-#drop.compact .short{display:inline;font-size:13.5px;font-weight:600;color:var(--accent-text)}
-#drop.compact .short small{font-weight:400;color:var(--muted);margin-left:6px}
-.or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12.5px}
-.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 
 /* 구역 목록: 색 점 · 이름(굵게) · 면적(작게) · 빼기(약하게) */
 .zones{display:flex;gap:8px;flex-wrap:wrap}
@@ -144,15 +150,15 @@ input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--lin
 .rt th,.rt td{height:38px;box-sizing:border-box}
 .rt thead tr:first-child th{height:30px}
 .rt tbody tr.hov td{background:#F2F8FC}
-.rt tbody tr.total td{border-top:2px solid #9AA8B8;background:var(--head);font-weight:700;color:var(--ink)}
+.rt tbody tr.total td{border-top:2px solid #FF6A00;background:var(--head);font-weight:700;color:var(--ink)}
 .rt tbody tr.total td.z{color:var(--ink)}
 .rt.scroll::after{content:"";position:absolute;top:0;right:0;bottom:0;width:24px;pointer-events:none;background:linear-gradient(to right,transparent,rgba(19,35,58,.10))}
 .rt.scroll.end::after{display:none}
-#zoneTable th.gs{box-shadow:inset 0 -2px 0 #FF6A00}
 @media (max-width:760px){ .rt{overflow-x:auto} .rt-zone{flex:none;overflow:visible} .rt-core{box-shadow:none} }
 .tablefoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:5px}
 .tablefoot .hint{font-size:12px}
 .scrollhint{font-size:12px;color:var(--faint);text-align:right;margin-left:auto}
+.scrollhint .arr{color:#FF6A00;font-weight:700}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
 th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{background:var(--head);font-weight:600;font-size:12.5px;color:var(--muted)}
@@ -166,7 +172,7 @@ tbody tr:hover td{background:#FAFCFE}
 #resultTable td.namecol .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:1px}
 #resultTable th.grp{font-size:12px;font-weight:700;letter-spacing:.02em;text-align:left;border-bottom:1px solid var(--line)}
 #resultTable th.grp.core{color:var(--ink);background:var(--accent-soft);border-top:2px solid var(--accent)}
-#resultTable th.grp.zone{color:var(--muted);border-top:2px solid var(--line-strong);border-left:1px solid var(--line-strong)}
+#zoneTable th.grp.zone{color:var(--muted);border-top:2px solid #FF6A00}
 #resultTable th.core{background:var(--accent-soft);color:var(--ink)}
 #resultTable td.core{font-size:14.5px;font-weight:500;color:var(--ink)}
 #resultTable td.z{font-size:13.5px;color:var(--muted)}
@@ -191,9 +197,10 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
 .lyr{position:relative;display:flex;flex-direction:column;align-items:flex-end}
 .lyr>button{display:inline-flex;align-items:center;gap:6px}
 .lyr>button[aria-expanded="true"]{border-color:var(--accent);color:var(--accent-text)}
+.lyr>button.on{border-color:#FF6A00;color:#C24E00}
 .lyr .menu{margin-top:4px;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(16,36,58,.16);min-width:170px}
 .lyr .menu label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap}
-.lyr .menu input{accent-color:#00AFF0;width:15px;height:15px}
+.lyr .menu input{accent-color:#FF6A00;width:15px;height:15px}
 .mapinfo .lyr .menu .sw{padding:0;background-color:transparent}
 .lyr .menu .sw{width:14px;height:14px;border-radius:3px;border:1.5px solid #E05600;background:repeating-linear-gradient(135deg,rgba(255,106,0,.55) 0 2px,rgba(255,106,0,.10) 2px 5px)}
 .lyr .menu p{margin:6px 0 0;font-size:11px;color:var(--faint);white-space:normal;max-width:200px}
@@ -212,17 +219,14 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
 
 <div class="wrap">
   <header class="brand">
-    <div class="brand-row"><span class="mark" aria-hidden="true"></span><h1>Field-Scan</h1><span class="slogan">구역 현황을 한눈에</span></div>
-    <p>구역을 그리거나 GIS 파일을 넣으면 토지·건축물 현황을 자동으로 집계합니다. 넣은 파일은 이 컴퓨터 안에서만 처리되고 어디에도 올라가지 않습니다.</p>
-    <div class="ver"><span class="chip" id="verChip">자료 불러오는 중…</span><span class="chip">서울특별시만 계산</span></div>
+    <div class="brand-row"><span class="mark" aria-hidden="true"></span><h1>Field-Scan</h1><span class="slogan">구역 현황</span><span class="desc">토지·건축물 현황 자동 집계</span></div>
   </header>
 
   <section class="step" aria-labelledby="s1">
-    <h2 id="s1"><span class="no">1</span>구역 정하기</h2>
+    <h2 id="s1"><span class="no">1</span>구역 설정</h2>
     <div class="maptools">
-      <input type="text" id="q" placeholder="예: 창신동 23-1" aria-label="동·지번 찾기">
-      <button class="btn sm" id="qBtn">찾기</button>
-      <button class="btn sm primary" id="drawBtn">구역 그리기</button>
+      <div class="search"><input type="text" id="q" placeholder="지번" aria-label="지번 (예: 창신동 23-1)"><button type="button" class="iconbtn" id="qBtn" aria-label="지번 찾기" title="지번 찾기"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12.6 12.6 17 17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+      <button class="btn sm soft" id="drawBtn">직접 지정</button>
       <span class="hits" id="hits"></span>
     </div>
     <div class="drawbar" id="drawBar" hidden>
@@ -232,15 +236,12 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
       <button class="btn sm" id="cancelBtn">그만두기</button>
     </div>
     <div id="map" tabindex="0" aria-label="서울 지도"></div>
-    <div class="or">또는 GIS 파일 넣기</div>
-    <div id="drop" tabindex="0" role="button" aria-label="GIS 파일 넣기">
-      <strong class="full">파일을 여기에 끌어다 놓거나, 눌러서 고르세요</strong>
-      <span class="hint full">SHP 묶음(.shp·.prj·.dbf·.shx), 그 묶음을 압축한 .zip, 또는 .gpkg 파일. 여러 개를 한 번에 넣어도 됩니다.</span>
-      <span class="short">+ GIS 파일 더 넣기<small>SHP · ZIP · GPKG, 끌어다 놓아도 됩니다</small></span>
+    <div id="drop" tabindex="0" role="button" aria-label="GIS 파일 첨부 (SHP · ZIP · GPKG)">
+      <span class="dt">+ GIS 파일 첨부</span><span class="ext">SHP · ZIP · GPKG</span>
+      <small class="full">끌어다 놓아도 됩니다 · 파일은 이 컴퓨터 안에서만 처리됩니다</small>
     </div>
     <input type="file" id="fileInput" multiple accept=".zip,.shp,.shx,.dbf,.prj,.cpg,.gpkg" hidden>
     <div class="zones" id="zones" aria-label="넣은 구역"></div>
-    <p class="hint" id="zonesHint" hidden>구역을 누르면 지도에서 강조됩니다. 색 점을 누르면 지도에서 숨기기·보이기, 이름을 두 번 누르면 이름 고치기(엑셀의 '명칭'). 이름이 같은 구역은 하나로 합쳐 계산합니다.</p>
     <p id="runStatus" class="hint"></p>
   </section>
 
@@ -249,7 +250,7 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
     <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div>
       <div class="rt" id="tableWrap"><div class="rt-core"><table id="resultTable"></table></div><div class="rt-zone" id="tableBox"><table id="zoneTable"></table></div></div>
-      <div class="tablefoot"><span class="hint" id="sumNote" hidden>합계는 구역별 결과를 더한 값입니다. 서로 겹치는 구역은 중복 포함될 수 있습니다.</span><span class="scrollhint" id="scrollHint" hidden>용도지역은 옆으로 넘겨 보세요 →</span></div>
+      <div class="tablefoot"><span class="hint" id="sumNote" hidden>합계는 구역별 결과를 더한 값입니다. 서로 겹치는 구역은 중복 포함될 수 있습니다.</span><span class="scrollhint" id="scrollHint" hidden>용도지역은 옆으로 넘겨 보세요 <span class="arr">→</span></span></div>
     </div>
     <details class="popbox" id="popBox" hidden>
       <summary><b>참고 · 추정 인구</b><span class="sum" id="popSum"></span><span>— 펼쳐 보기</span></summary>
@@ -308,8 +309,8 @@ let layers = []; // {id, file, layer, name, polys(원좌표), crs, crsAuto, crsN
 let results = null;
 
 /* ---------- 자료 */
-fetch("data/meta.json").then(r => r.json()).then(m => { META = m; $("#verChip").textContent = "자료 기준: " + m.version; })
-  .catch(() => { $("#verChip").textContent = "자료를 불러오지 못했습니다. 페이지를 새로고침하세요."; });
+fetch("data/meta.json").then(r => r.json()).then(m => { META = m; })   // 자료 기준(m.version)은 '계산 기준'과 엑셀 기준 시트에 표시
+  .catch(() => { setRun("자료를 불러오지 못했습니다. 페이지를 새로고침하세요.", "err"); });
 let fetchActive = 0; const fetchQueue = [];   // 큰 파일을 한꺼번에 여러 개 받다 실패하지 않도록 동시에 6개까지만
 async function fetchSlot(fn) {
   if (fetchActive >= 6) await new Promise(r => fetchQueue.push(r));
@@ -523,7 +524,6 @@ function renderLayers(){
     it.addEventListener("click", () => { if (!L.crs) return; selectZone(selectedKey === k ? null : k, true); });
     box.appendChild(it);
   }
-  $("#zonesHint").hidden = !layers.length;
   $("#drop").classList.toggle("compact", layers.length > 0);
   drawOverlays();
 }
@@ -600,7 +600,7 @@ async function run(){
     results = await computeStep1(layers, msg => setRun(msg));
     $("#dlStatus").hidden = true;
     renderResults();
-    setRun(`계산 완료: 구역 ${results.rows.length}개, 필지 ${fmt(results.rows.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
+    setRun(`계산 완료: 구역 ${results.rows.length}개, 필지 ${fmt(results.rows.reduce((s,r)=>s+r.n,0))}개`);
     if(results.warns.length) setRun(results.warns.join(" / "),"warn");
   }catch(err){ console.error(err); setRun("계산하다가 문제가 생겼습니다: "+(err.message||err),"err"); }
 }
@@ -814,7 +814,7 @@ const ParcelLayer = L.GridLayer.extend({
 });
 const parcels = new ParcelLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 5, updateWhenZooming: false }).addTo(map);
 /* ==================== 용도지역 지도 (공식 도형: 브이월드 LT_C_UQ111을 미리 받아 1km 칸으로 저장) ====================
-   지도 우선순위: 입력 구역(overlayPane) > 일반상업 강조(z 4) > 전체 용도지역(z 3) > 배경지도. 지적선은 z 5(선만). */
+   지도 우선순위: 입력 구역(overlayPane) > 일반상업 강조 타일(z 4) > 전체 용도지역 타일(z 3) > 배경지도. 지적선은 z 5(선만). */
 const ZN_COLOR = {"제1종전용주거지역":"#F3EBC0","제2종전용주거지역":"#EFE3A6","전용주거지역":"#EFE3A6","제1종일반주거지역":"#F2E2A0",
   "제2종일반주거지역":"#E9D27E","제3종일반주거지역":"#DDBE61","일반주거지역":"#E9D27E","준주거지역":"#E7B489",
   "중심상업지역":"#D88E95","일반상업지역":"#E3A2A6","근린상업지역":"#EBBDBF","유통상업지역":"#DDA9C4",
@@ -823,76 +823,21 @@ const ZN_COLOR = {"제1종전용주거지역":"#F3EBC0","제2종전용주거지�
 const ZN_LEGEND = [["주거지역","#E9D27E"],["준주거지역","#E7B489"],["상업지역","#E3A2A6"],["공업지역","#C9BEE3"],["녹지지역","#BCDDB0"]];
 const GS = "일반상업지역", GS_STROKE = "#E05600";
 let ZN_META = null, gsOn = false;
-const ZNC = new Map();
 const loadZnMeta = () => { if (!ZN_META) { ZN_META = fetch("data/zn_meta.json").then(r => r.json()); ZN_META.catch(() => { ZN_META = null; }); } return ZN_META; };   // 한 번만 받음
-function znParse(buf) { return JSON.parse(new TextDecoder().decode(buf)).map(([z, rings]) => {
-  const rs = rings.map(r => { const a = new Float64Array(r.length); for (let i = 0; i < r.length; i++) a[i] = r[i] / 10; return a; });
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const e = rs[0];
-  for (let i = 0; i < e.length; i += 2) { if (e[i] < x0) x0 = e[i]; if (e[i] > x1) x1 = e[i]; if (e[i+1] < y0) y0 = e[i+1]; if (e[i+1] > y1) y1 = e[i+1]; }
-  return { z, rs, bb: [x0, y0, x1, y1] }; }); }
-function loadZnCell(k) {   // 같은 칸은 한 번만 받음(실패하면 다음에 다시)
-  if (!ZNC.has(k)) { const pr = fetchBin(`data/zn_${k}.dat`).then(znParse); ZNC.set(k, pr); pr.catch(() => ZNC.delete(k)); }
-  return ZNC.get(k);
-}
-async function znPolysIn(x0, y0, x1, y1) {   // 1km 칸 상세 도형 중 범위에 걸치는 것만
-  const m = await loadZnMeta();
-  const list = (await Promise.all(m.cells.filter(c => !(c.bb[2] < x0 || c.bb[0] > x1 || c.bb[3] < y0 || c.bb[1] > y1)).map(c => loadZnCell(c.k)))).flat();
-  return { m, list: list.filter(q => !(q.bb[2] < x0 || q.bb[0] > x1 || q.bb[3] < y0 || q.bb[1] > y1)) };
-}
-let gsPattern = null;
-function hatch(ctx) {
-  if (!gsPattern) { const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d");
-    g.strokeStyle = "rgba(255,106,0,.53)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke(); gsPattern = c; }
-  return ctx.createPattern(gsPattern, "repeat");
-}
-// 타일 모서리 → 5186 변환을 만들어 도형을 그리는 공용 캔버스 층 (지적선 층과 같은 방식)
-function tileXform(coords) {
-  const T = 256, nwP = coords.scaleBy(L.point(T, T));
-  const c0 = XY(map.unproject(nwP, coords.z)), c1 = XY(map.unproject(nwP.add([T, 0]), coords.z)),
-        c2 = XY(map.unproject(nwP.add([0, T]), coords.z)), c3 = XY(map.unproject(nwP.add([T, T]), coords.z));
-  const ux = c1[0] - c0[0], uy = c1[1] - c0[1], vx = c2[0] - c0[0], vy = c2[1] - c0[1], det = ux * vy - vx * uy;
-  const a = T * vy / det, b = -T * vx / det, c = -T * uy / det, e = T * ux / det;
-  return { P: (x, y) => { const dx = x - c0[0], dy = y - c0[1]; return [a * dx + b * dy, c * dx + e * dy]; },
-    box: [Math.min(c0[0], c1[0], c2[0], c3[0]), Math.min(c0[1], c1[1], c2[1], c3[1]), Math.max(c0[0], c1[0], c2[0], c3[0]), Math.max(c0[1], c1[1], c2[1], c3[1])] };
-}
-function znPath(ctx, P, q) { ctx.beginPath(); for (const r of q.rs) { for (let k = 0; k < r.length; k += 2) { const t = P(r[k], r[k+1]); k ? ctx.lineTo(t[0], t[1]) : ctx.moveTo(t[0], t[1]); } ctx.closePath(); } }
-const ZnLayer = L.GridLayer.extend({
-  createTile(coords, done) {
-    const tile = document.createElement("canvas"); tile.width = tile.height = 256; const ctx = tile.getContext("2d"); const gsOnly = this.options.gsOnly;
-    const { P, box } = tileXform(coords);
-    znPolysIn(box[0] - 5, box[1] - 5, box[2] + 5, box[3] + 5).then(({ m, list }) => {
-      if (!this._map || !tile.isConnected) return done(null, tile);   // 그새 지도에서 빠졌거나 화면 밖으로 밀려난 타일은 그리지 않음
-      for (const q of list) {
-        const name = m.zones[q.z];
-        if (gsOnly) {
-          if (name !== GS) continue;
-          znPath(ctx, P, q); ctx.fillStyle = "rgba(255,106,0,.11)"; ctx.fill("evenodd"); ctx.fillStyle = hatch(ctx); ctx.fill("evenodd");
-          ctx.strokeStyle = GS_STROKE; ctx.globalAlpha = .85; ctx.lineWidth = coords.z >= 15 ? 1.6 : 1.1; ctx.stroke(); ctx.globalAlpha = 1;
-        } else {
-          znPath(ctx, P, q); ctx.fillStyle = ZN_COLOR[name] || "#D5DBE1"; ctx.globalAlpha = .55; ctx.fill("evenodd");
-          ctx.globalAlpha = .35; ctx.strokeStyle = "#5C6B7E"; ctx.lineWidth = coords.z >= 15 ? .8 : .5; ctx.stroke(); ctx.globalAlpha = 1;
-        }
-      }
-      done(null, tile);
-    }).catch(err => { console.error(err); done(null, tile); });
-    return tile;
-  }
-});
-// 저배율(타일 줌 10~13): prep_zoning_tiles.py로 미리 그린 PNG 타일. 그린 타일 목록(zn_meta.tiles)에 없는 곳은 요청하지 않음
+// 지도는 prep_zoning_tiles.py로 미리 그린 타일만 붙임(브라우저는 도형을 그리지 않음). 그린 타일 목록(zn_meta.tiles)에 없는 곳은 요청하지 않음
 const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const ZnTiles = L.TileLayer.extend({ getTileUrl(c) { const set = ZN_TILESET && ZN_TILESET[this.options.kind][c.z];
   return set && set.has(`${c.x}_${c.y}`) ? L.TileLayer.prototype.getTileUrl.call(this, c) : BLANK; } });
 let ZN_TILESET = null;
-const LOW_MAX = 13;   // 이 타일 줌까지는 미리 그린 타일, 그 위는 1km 칸 상세 도형
-const znLow = new ZnTiles("data/znt/{z}/{x}/{y}.png", { kind: "zn", minZoom: 10, maxZoom: LOW_MAX, zIndex: 3 });
-const gsLow = new ZnTiles("data/gst/{z}/{x}/{y}.png", { kind: "gs", minZoom: 10, maxZoom: LOW_MAX, zIndex: 4 });
-const znVec = new ZnLayer({ tileSize: 256, minZoom: LOW_MAX + 1, maxZoom: 20, zIndex: 3, updateWhenZooming: false });
-const gsVec = new ZnLayer({ tileSize: 256, minZoom: LOW_MAX + 1, maxZoom: 20, zIndex: 4, updateWhenZooming: false, gsOnly: true });
-const ZN_SETS = { zn: [znLow, znVec], gs: [gsLow, gsVec] };
+const ZN_NATIVE = 16;   // 타일은 16배율까지. 더 확대하면 16배율 타일을 늘려 보여줌
+const tileOpt = { minZoom: 10, maxZoom: 20, maxNativeZoom: ZN_NATIVE, updateWhenZooming: false, keepBuffer: 3 };
+const znTiles = new ZnTiles("data/znt/{z}/{x}/{y}.webp", { ...tileOpt, kind: "zn", zIndex: 3 });
+const gsTiles = new ZnTiles("data/gst/{z}/{x}/{y}.webp", { ...tileOpt, kind: "gs", zIndex: 4 });
+const ZN_SETS = { zn: [znTiles], gs: [gsTiles] };
 // 불러오는 동안 짧게 표시
 const znPending = new Set();
 const znLoadShow = () => { const el = document.getElementById("znLoad"); if (el) el.hidden = !znPending.size; };
-for (const l of [znLow, gsLow, znVec, gsVec]) {
+for (const l of [znTiles, gsTiles]) {
   l.on("loading", () => { znPending.add(l); znLoadShow(); }); l.on("load", () => { znPending.delete(l); znLoadShow(); });
   l.on("remove", () => { znPending.delete(l); znLoadShow(); });
 }
@@ -907,7 +852,7 @@ async function updateZoningLayers() {
   if (lg) { lg.hidden = !showZn && !gsOn;
     lg.innerHTML = (showZn ? ZN_LEGEND.map(([n, c]) => `<span class="li"><i style="background:${c}"></i>${n}</span>`).join("") : "") +
       (gsOn ? `<span class="li"><i style="background:${GS_SWATCH}"></i>일반상업지역 강조</span>` : ""); }
-  if (!showZn && !gsOn) znTip.hidden = true;
+  if (!showZn && !gsOn) znTipOff();
   for (const l of ZN_SETS.zn) if (!showZn && map.hasLayer(l)) map.removeLayer(l);   // 끄면 바로 빼서 더 그리지 않음
   for (const l of ZN_SETS.gs) if (!gsOn && map.hasLayer(l)) map.removeLayer(l);
   if (!showZn && !gsOn) return;
@@ -918,28 +863,40 @@ async function updateZoningLayers() {
   if (baseKind === "zone") for (const l of ZN_SETS.zn) if (!map.hasLayer(l)) l.addTo(map);
   if (gsOn) for (const l of ZN_SETS.gs) if (!map.hasLayer(l)) l.addTo(map);
 }
-// 마우스를 올리면 그 자리 용도지역 이름: 지도를 움직이는 중에는 쉬고, 멈춘 뒤 0.2초 지나면 그 점이 든 칸의 도형만 검사
+// 마우스를 올리면 그 자리 용도지역 이름: 지도가 멈추고 마우스가 0.3초 머물면, 그 점이 든 1km 칸 하나만 받아(캐시) 검사. 새로 움직이면 이전 조회는 버림
 const znTip = L.DomUtil.create("div", "zntip", map.getContainer()); znTip.hidden = true;
-let znTipTimer = null, mapMoving = false, tipSeq = 0;
-map.on("movestart zoomstart", () => { mapMoving = true; znTip.hidden = true; clearTimeout(znTipTimer); });
+let znTipTimer = null, mapMoving = false, tipSeq = 0, ZQ_KEYS = null;
+const ZQ = new Map();
+function loadZq(k) {   // 칸 경계로 자른 도형. 같은 칸은 한 번만 받음(실패하면 다음에 다시)
+  if (!ZQ.has(k)) { const pr = fetchBin(`data/zq_${k}.dat`).then(b => JSON.parse(new TextDecoder().decode(b)).map(([z, rings]) => ({ z, rs: rings.map(r => r.map(v => v / 10)) })));
+    ZQ.set(k, pr); pr.catch(() => ZQ.delete(k)); }
+  return ZQ.get(k);
+}
+const znTipOff = () => { clearTimeout(znTipTimer); tipSeq++; znTip.hidden = true; };
+map.on("movestart zoomstart", () => { mapMoving = true; znTipOff(); });
 map.on("moveend zoomend", () => { mapMoving = false; });
 const inFlat = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) { const yi = r[i+1], yj = r[j+1];
   if ((yi > y) !== (yj > y) && x < (r[j] - r[i]) * (y - yi) / (yj - yi) + r[i]) c = !c; } return c; };
 map.on("mousemove", e => {
-  clearTimeout(znTipTimer);
-  if (drawing || mapMoving || (baseKind !== "zone" && !gsOn)) { znTip.hidden = true; return; }
-  const my = ++tipSeq;
+  znTipOff();
+  if (drawing || mapMoving || (baseKind !== "zone" && !gsOn)) return;
+  const my = tipSeq;
   znTipTimer = setTimeout(async () => {
-    const [x, y] = XY(e.latlng); const { m, list } = await znPolysIn(x, y, x, y);
-    if (my !== tipSeq || drawing || mapMoving) return;
-    const hit = list.find(q => inFlat(x, y, q.rs[0]) && !q.rs.slice(1).some(h => inFlat(x, y, h)));
-    if (!hit) { znTip.hidden = true; return; }
-    const name = m.zones[hit.z]; const cp = e.containerPoint;
-    znTip.innerHTML = `<i style="background:${ZN_COLOR[name] || "#D5DBE1"}"></i><b>${esc(name)}</b>`;
-    znTip.style.left = cp.x + "px"; znTip.style.top = cp.y + "px"; znTip.hidden = false;
-  }, 200);
+    try {
+      const m = await loadZnMeta(); if (!ZQ_KEYS) ZQ_KEYS = new Set(m.q);
+      const [x, y] = XY(e.latlng), k = `${Math.floor(x / 1000)}_${Math.floor(y / 1000)}`;
+      if (!ZQ_KEYS.has(k)) return;
+      const list = await loadZq(k);
+      if (my !== tipSeq || drawing || mapMoving || (baseKind !== "zone" && !gsOn)) return;
+      const hit = list.find(q => inFlat(x, y, q.rs[0]) && !q.rs.slice(1).some(h => inFlat(x, y, h)));
+      if (!hit) return;
+      const name = m.zones[hit.z]; const cp = e.containerPoint;
+      znTip.innerHTML = `<i style="background:${ZN_COLOR[name] || "#D5DBE1"}"></i><b>${esc(name)}</b>`;
+      znTip.style.left = cp.x + "px"; znTip.style.top = cp.y + "px"; znTip.hidden = false;
+    } catch (err) { /* 조회 실패는 툴팁만 생략 */ }
+  }, 300);
 });
-map.on("mouseout", () => { clearTimeout(znTipTimer); tipSeq++; znTip.hidden = true; });
+map.on("mouseout", znTipOff);
 // '용도지역 표시' 메뉴: 마우스를 올리면 펼치고, 누르면 고정, 바깥을 누르면 닫힘
 setTimeout(() => {
   const lyr = document.getElementById("lyr"), btn = document.getElementById("lyrBtn"), menu = document.getElementById("lyrMenu"), chk = document.getElementById("gsChk");
@@ -949,7 +906,7 @@ setTimeout(() => {
   lyr.addEventListener("mouseenter", () => { clearTimeout(closeT); open(true); });
   lyr.addEventListener("mouseleave", () => { if (!pinned) closeT = setTimeout(() => open(false), 500); });
   document.addEventListener("click", e => { if (!lyr.contains(e.target)) { pinned = false; open(false); } });
-  chk.addEventListener("change", () => { gsOn = chk.checked; pinned = true; updateZoningLayers(); });
+  chk.addEventListener("change", () => { gsOn = chk.checked; btn.classList.toggle("on", gsOn); pinned = true; updateZoningLayers(); });
   L.DomEvent.disableClickPropagation(lyr); L.DomEvent.disableScrollPropagation(lyr);
   updateZoningLayers();
 }, 0);
@@ -1073,7 +1030,7 @@ function drawRefresh() {
 }
 function setDrawing(on) {
   if (on) { hoverKey = null; }
-  drawing = on ? { pts: [], cur: null } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on;
+  drawing = on ? { pts: [], cur: null } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on; $("#drawBtn").classList.toggle("active", on);
   $("#map").classList.toggle("drawing", on); drawRefresh(); if (on) $("#map").focus();
 }
 const same = (a, b) => a && b && Math.abs(a[0] - b[0]) < 0.05 && Math.abs(a[1] - b[1]) < 0.05;
