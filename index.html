@@ -87,6 +87,20 @@ input::placeholder{color:var(--faint)}
 .drawtip b{color:var(--accent-text);font-size:15px;font-family:var(--f-num)}
 .drawtip small{display:block;color:var(--muted);margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
 
+/* 개별 폴리곤 정보 카드(마우스를 올렸을 때만). 주황은 쓰지 않음 */
+.pcard{position:absolute;z-index:820;pointer-events:none;width:244px;box-sizing:border-box;background:#FFFFFF;color:var(--ink);border:1px solid var(--line);border-radius:var(--r-ctl);box-shadow:0 4px 14px rgba(22,50,74,.12);padding:11px 13px 12px;font-family:var(--f-body)}
+.pcard .ph{display:flex;align-items:baseline;gap:6px;font-size:13px;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:9px;white-space:nowrap;overflow:hidden}
+.pcard .ph i{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
+.pcard .ph b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.pcard .ph span{color:var(--muted);flex:none}
+.pcard small{display:block;font-size:11px;color:var(--muted);font-weight:400;line-height:1.3}
+.pcard b small{display:inline;font-size:11.5px;color:var(--ink);font-weight:500;margin-left:1px}
+.pcard .pa{margin-bottom:9px}
+.pcard .pa>b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.pcard .pg{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.pcard .pg b{font-size:14.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.pcard .wait{font-size:12px;font-weight:500;color:var(--faint)}
+
 /* 지도 위 구역 라벨: 이름 굵게, 면적은 작고 연하게 */
 .zlab-wrap{background:none;border:none}
 .zlab{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap;pointer-events:none;
@@ -360,6 +374,7 @@ const cellsIn = (x0, y0, x1, y1) => META.cells.filter(c => !(c.bb[2] < x0 || c.b
 
 /* ---------- 도형 유틸 (ring = [[x,y],...]) */
 function ringArea(r){ let s=0; for(let i=0,j=r.length-1;i<r.length;j=i++) s += (r[j][0]*r[i][1]-r[i][0]*r[j][1]); return s/2; }
+const inPoly=(x,y,p)=>{ if(!inRing(x,y,p[0])) return false; for(let k=1;k<p.length;k++) if(inRing(x,y,p[k])) return false; return true; };
 function inRing(x,y,r){ let c=false; for(let i=0,j=r.length-1;i<r.length;j=i++){ const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];
   if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; }
 function polyArea(p){ let a=Math.abs(ringArea(p[0])); for(let k=1;k<p.length;k++) a-=Math.abs(ringArea(p[k])); return a; }
@@ -538,11 +553,14 @@ async function computeStep1(zoneLayers, onProgress = () => {}) {
     const groups=new Map();
     const warns=[]; for(const L of zoneLayers.filter(L=>!L.crs)) warns.push(`'${L.file}'의 좌표계를 알 수 없어 뺐습니다(.prj 파일을 같이 넣어주세요).`);
     for(const L of zoneLayers.filter(L=>L.crs)){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
-    const out=[]; let gi=0;
+    const out=[]; let gi=0; const pstat=new Map();   // 폴리곤 ID → {area, n, units, res, non}
     for(const [name, Ls] of groups){
       gi++; onProgress(`계산 중… (${gi}/${groups.size}) ${name}`); await new Promise(r=>setTimeout(r,20));
       let polys=[]; for(const L of Ls) polys.push(...toSeoul(L.polys, L.crs));
       polys = polys.filter(p=>p[0]&&p[0].length>=4);
+      // 개별 폴리곤(지도 정보 카드용): ID = 레이어 id-파일 안 순번. 지도 도형도 같은 ID로 연결
+      const pl=[]; for(const L of Ls) toSeoul(L.polys, L.crs).forEach((p,i)=>{ if(p[0]&&p[0].length>=4) pl.push({id:`${L.id}-${i}`, p, b:bboxOf([p]), st:{area:polyArea(p), n:0, units:0, res:0, non:0}}); });
+      const perPoly = pl.length > 1;   // 폴리곤이 하나면 명칭 합산값과 같으므로 따로 판정하지 않음
       const bb=bboxOf(polys);
       if(!(bb[2]>SEOUL[0]&&bb[0]<SEOUL[2]&&bb[3]>SEOUL[1]&&bb[1]<SEOUL[3])) warns.push(`'${name}' 구역이 서울 범위 밖에 있습니다. 좌표계를 확인하세요.`);
       // 합치기(겹친 부분 한 번만)
@@ -567,6 +585,13 @@ async function computeStep1(zoneLayers, onProgress = () => {}) {
           if(s){ let hit=0; for(let k=0;k<s[1];k++){ const j=2*(s[0]+k); if(inMerged(d.sPts[j]/10, d.sPts[j+1]/10)) hit++; } inside = hit*2 >= s[1]; }
           else { if(xi<x0||xi>x1||yi<y0||yi>y1) continue; inside = inMerged(xi/10, yi/10); }
           if(!inside) continue;
+          if(perPoly){   // 명칭 구역에 든 필지만, 같은 표본점(또는 대표점)으로 어느 폴리곤에 드는지 판정
+            const pb0=d.bb[4*i]/10, pb1=d.bb[4*i+1]/10, pb2=d.bb[4*i+2]/10, pb3=d.bb[4*i+3]/10;
+            for(const q of pl){ if(q.b[2]<pb0||q.b[0]>pb2||q.b[3]<pb1||q.b[1]>pb3) continue;
+              let inQ; if(s){ let hit=0; for(let k=0;k<s[1];k++){ const j=2*(s[0]+k); if(inPoly(d.sPts[j]/10, d.sPts[j+1]/10, q.p)) hit++; } inQ = hit*2 >= s[1]; }
+              else inQ = inPoly(xi/10, yi/10, q.p);
+              if(inQ){ q.st.n++; q.st.units+=d.units[i]; q.st.res+=d.res[i]; q.st.non+=d.non[i]; } }
+          }
           const z=META.zones[d.zone[i]];
           acc.n++; acc.area+=d.area[i]; acc.res+=d.res[i]; acc.non+=d.non[i]; acc.units+=d.units[i]; acc.zone[z]=(acc.zone[z]||0)+d.area[i];
           { const o=d.oa[i]; let q=oaIn.get(o); if(!q) oaIn.set(o, q={area:0, units:0}); q.area+=d.area[i]; q.units+=d.units[i]; }
@@ -583,9 +608,11 @@ async function computeStep1(zoneLayers, onProgress = () => {}) {
         else { pop.est += q.units * ((t && t[2]) || OA.seoul_pp); if (t) pop.nPart++; }
       }
       pop.total = pop.measured + pop.est;
+      if(!perPoly) for(const q of pl) Object.assign(q.st, {n:acc.n, units:acc.units, res:acc.res, non:acc.non});
+      for(const q of pl) pstat.set(q.id, q.st);
       out.push({name, files:Ls.map(L=>L.file), total, ...acc, plist, pop});
     }
-    return { rows: out, warns, oaYear: (await loadOA()).year };
+    return { rows: out, warns, oaYear: (await loadOA()).year, pstat };
 }
 
 /* ---------- 화면: 구역이 바뀌면 STEP 1을 다시 계산해 표시 */
@@ -853,7 +880,7 @@ fetchBin("data/seoul.dat").then(b => {
 // 파랑·자홍·초록·보라·청록·빨강·연두·갈색 순(색각 차이를 고려해 밝기도 서로 다르게). 주황은 일반상업 강조색이라 쓰지 않음
 const ZONE_COLORS = ["#1D4ED8", "#DB2777", "#059669", "#7C3AED", "#0E7490", "#B91C1C", "#65A30D", "#854D0E"];
 const nameColor = new Map(); const hiddenKeys = new Set();
-let selectedKey = null, hoverKey = null;
+let selectedKey = null, hoverKey = null, hoverShape = null;
 const zoneShapes = new Map();   // 이름 → { shapes, color, labelLL, area, marker }
 function groupKey(L0) { return (L0.name || L0.file).trim(); }
 function colorOf(k) {
@@ -870,17 +897,19 @@ function drawOverlays() {
   for (const L0 of layers) {
     if (!L0.crs) continue;
     if (!L0._ll) { try { L0._xy = toSeoul(L0.polys, L0.crs); L0._ll = L0._xy.map(p => p.map(r => r.map(q => LL(q[0], q[1])))); } catch (e) { continue; } }
-    const k = groupKey(L0); let g = groups.get(k); if (!g) groups.set(k, g = { xy: [], ll: [] });
-    g.xy.push(...L0._xy); g.ll.push(...L0._ll);
+    const k = groupKey(L0); let g = groups.get(k); if (!g) groups.set(k, g = { xy: [], ll: [], ids: [] });
+    g.xy.push(...L0._xy); g.ll.push(...L0._ll); g.ids.push(...L0._xy.map((_, i) => `${L0.id}-${i}`));
   }
   for (const [k, g] of groups) {
     const color = colorOf(k);
     if (hiddenKeys.has(k) || !g.xy.length) continue;
     L.polygon(g.ll, { color: "#FFFFFF", weight: 6, opacity: .9, fill: false, interactive: false }).addTo(overlay);   // 흰 테두리(용도지역·위성 위에서도 경계가 묻히지 않게)
     const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2.75 }).addTo(overlay));
+    shapes.forEach((sh, j) => { sh._pid = g.ids[j]; sh._pno = j + 1; sh._pname = k; sh._pcolor = color; sh._parea = polyArea(g.xy[j]); });
     for (const sh of shapes) {
-      sh.on("mouseover", () => { if (drawing) return; hoverKey = k; styleZones(); placeLabels(); });
-      sh.on("mouseout", () => { if (hoverKey === k) { hoverKey = null; styleZones(); placeLabels(); } });
+      sh.on("mouseover", e => { if (drawing) return; hoverKey = k; hoverShape = sh; styleZones(); placeLabels(); showPcard(sh, e.containerPoint); });
+      sh.on("mousemove", e => { if (hoverShape === sh) movePcard(e.containerPoint); });
+      sh.on("mouseout", () => { hidePcard(); if (hoverShape === sh) hoverShape = null; if (hoverKey === k) hoverKey = null; styleZones(); placeLabels(); });
       sh.on("click", e => { if (drawing) return; L.DomEvent.stopPropagation(e); selectZone(selectedKey === k ? null : k, false); });
     }
     let big = g.xy[0], bigA = polyArea(big); for (const q of g.xy) { const a = polyArea(q); if (a > bigA) { big = q; bigA = a; } }
@@ -892,14 +921,37 @@ function drawOverlays() {
   styleZones(); placeLabels();
 }
 function styleZones() {
-  const focus = hoverKey || selectedKey;
+  const focus = selectedKey;
   for (const [k, z] of zoneShapes) {
-    const on = k === selectedKey || k === hoverKey, dim = !!focus && !on;
-    for (const sh of z.shapes) sh.setStyle({ color: z.color, fillColor: z.color, weight: on ? 4 : 2.75, opacity: dim ? .7 : 1, fillOpacity: on ? .3 : (dim ? .14 : .22) });
+    const on = k === selectedKey, dim = !!focus && !on;
+    for (const sh of z.shapes) sh.setStyle({ color: z.color, fillColor: z.color, weight: (on ? 4 : 2.75) + (sh === hoverShape ? 1.25 : 0), opacity: dim ? .7 : 1, fillOpacity: on ? .3 : (dim ? .14 : .22) });
     if (on) z.shapes.forEach(sh => sh.bringToFront());
   }
   document.querySelectorAll(".zitem").forEach(el => el.classList.toggle("sel", el.dataset.k === selectedKey));
 }
+/* 개별 폴리곤 정보 카드: 집계 때 저장한 결과(results.pstat)만 읽어 표시. 마우스 이동 중 재집계 없음 */
+const pcard = L.DomUtil.create("div", "pcard", map.getContainer()); pcard.hidden = true;
+const canHover = () => !window.matchMedia || window.matchMedia("(hover: hover)").matches;   // 터치 화면에서는 카드 없음
+function showPcard(sh, cp) {
+  if (!canHover() || drawing) return;
+  const st = results && results.pstat && results.pstat.get(sh._pid);
+  const v = (x, unit) => st ? `${fmt(x)}<small>${unit}</small>` : `<span class="wait">집계 중…</span>`;
+  pcard.innerHTML = `<div class="ph"><i style="background:${sh._pcolor}"></i><b>${esc(sh._pname)}</b><span>· 폴리곤 ${String(sh._pno).padStart(2, "0")}</span></div>
+    <div class="pa"><small>폴리곤 면적</small><b>${fmt(sh._parea)}<small>㎡</small></b></div>
+    <div class="pg"><div><small>필지 수</small><b>${v(st && st.n, "필지")}</b></div><div><small>세대수</small><b>${v(st && st.units, "세대")}</b></div>
+    <div><small>주거연면적</small><b>${v(st && st.res, "㎡")}</b></div><div><small>비주거연면적</small><b>${v(st && st.non, "㎡")}</b></div></div>`;
+  pcard.hidden = false; movePcard(cp);
+}
+function movePcard(cp) {
+  if (pcard.hidden) return;
+  const W = map.getSize(), w = pcard.offsetWidth, h = pcard.offsetHeight, gap = 18;
+  let x = cp.x + gap, y = cp.y + gap;
+  if (x + w > W.x - 6) x = cp.x - gap - w;   // 오른쪽 끝이면 커서 왼쪽으로
+  if (y + h > W.y - 6) y = cp.y - gap - h;   // 아래 끝이면 커서 위로
+  pcard.style.left = Math.max(6, x) + "px"; pcard.style.top = Math.max(6, y) + "px";
+}
+function hidePcard() { pcard.hidden = true; }
+map.on("movestart zoomstart mouseout", hidePcard);
 function selectZone(k, fit) {
   selectedKey = k; styleZones(); placeLabels();
   if (k && fit) { const z = zoneShapes.get(k); if (z) map.fitBounds(L.featureGroup(z.shapes).getBounds(), { padding: [30, 30], maxZoom: 17 }); }
@@ -954,7 +1006,7 @@ function drawRefresh() {
 }
 function setDrawing(on) {
   if (on) { hoverKey = null; }
-  drawing = on ? { pts: [], cur: null } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on; $("#drawBtn").classList.toggle("active", on);
+  drawing = on ? { pts: [], cur: null } : null; if (on) hidePcard(); $("#drawBar").hidden = !on; $("#drawBtn").disabled = on; $("#drawBtn").classList.toggle("active", on);
   $("#map").classList.toggle("drawing", on); drawRefresh(); if (on) $("#map").focus();
 }
 const same = (a, b) => a && b && Math.abs(a[0] - b[0]) < 0.05 && Math.abs(a[1] - b[1]) < 0.05;
