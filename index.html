@@ -2,115 +2,189 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
-<title>구역 연면적 집계기</title>
+<title>Field-Scan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* 레이아웃: 한 줄 흐름의 작업 화면 — ① 파일 넣기 → ② 분류 확인 → ③ 결과·엑셀. 지적도 청사진 톤의 청록 잉크 */
+/* Field-Scan — 밝은 업무용 화면: 하늘색(#00AFF0)은 주요 버튼·선택·핵심 경계에만, 글자는 짙은 남색, 바탕은 차가운 회색.
+   흐름: ① 구역 정하기(지도·파일) → ② 현황 집계 결과(표) → 엑셀 받기 */
 :root{
-  --bg:#f4f6f5; --panel:#ffffff; --ink:#1b2b2a; --muted:#5d6f6c; --line:#d5dedb;
-  --accent:#0f6b63; --accent-ink:#ffffff; --accent-soft:#e3f0ed; --warn:#9a5b00; --warn-soft:#fbf1df; --bad:#b3261e;
-  --sample:#8a9794;
+  --bg:#F3F6F9; --panel:#FFFFFF; --ink:#13233A; --muted:#5C6B7E; --faint:#8A97A8;
+  --line:#E3E8EE; --line-strong:#CBD5E0; --head:#F7F9FB;
+  --accent:#00AFF0; --accent-ink:#04263B; --accent-text:#0070A8; --accent-soft:#EAF7FD; --accent-line:#9EDCF6;
+  --warn:#9A5B00; --warn-soft:#FFF4E0; --bad:#B3261E; --ok:#1C7A4E;
+  --sample:#8A97A8;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#121817; --panel:#1a2221; --ink:#e3ecea; --muted:#9db0ac; --line:#2e3b39;
-  --accent:#4fb8ab; --accent-ink:#0d1716; --accent-soft:#1e3330; --warn:#f0b45a; --warn-soft:#33281a; --bad:#ff8a80; --sample:#6f7f7c; color-scheme:dark}}
+  --bg:#0E1620; --panel:#15202C; --ink:#E5EDF5; --muted:#9AA9B9; --faint:#738396;
+  --line:#243444; --line-strong:#33475B; --head:#192634;
+  --accent:#00AFF0; --accent-ink:#03202F; --accent-text:#5ECDF7; --accent-soft:#0F2B3B; --accent-line:#1D5A78;
+  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; --sample:#738396; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#121817; --panel:#1a2221; --ink:#e3ecea; --muted:#9db0ac; --line:#2e3b39;
-  --accent:#4fb8ab; --accent-ink:#0d1716; --accent-soft:#1e3330; --warn:#f0b45a; --warn-soft:#33281a; --bad:#ff8a80; --sample:#6f7f7c; color-scheme:dark}
+  --bg:#0E1620; --panel:#15202C; --ink:#E5EDF5; --muted:#9AA9B9; --faint:#738396;
+  --line:#243444; --line-strong:#33475B; --head:#192634;
+  --accent:#00AFF0; --accent-ink:#03202F; --accent-text:#5ECDF7; --accent-soft:#0F2B3B; --accent-line:#1D5A78;
+  --warn:#F0B45A; --warn-soft:#33281A; --bad:#FF8A80; --ok:#5FD39A; --sample:#738396; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
-.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:flex;flex-direction:column;gap:20px}
-header h1{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
-header p{margin:0;color:var(--muted);max-width:68ch}
-.ver{display:inline-flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--line)}
-section.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.step h2{margin:0;font-size:17px;font-weight:600;display:flex;align-items:center;gap:10px}
-.step h2 .no{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:14px;font-family:var(--f-num)}
-.hint{color:var(--muted);font-size:13.5px;margin:0}
-#drop{border:2px dashed var(--line);border-radius:10px;padding:34px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
-#drop:hover,#drop:focus-visible,#drop.over{border-color:var(--accent);background:var(--accent-soft);outline:none}
-#drop strong{display:block;font-size:17px;margin-bottom:6px}
-.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--accent);padding:10px 18px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
-.btn.ghost{background:transparent;color:var(--accent)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:24px 64px;display:flex;flex-direction:column;gap:18px}
+
+/* 머리말 */
+.brand{display:flex;flex-direction:column;gap:6px}
+.brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--accent);position:relative;flex:none;
+  background-image:linear-gradient(var(--panel),var(--panel)),linear-gradient(var(--panel),var(--panel));
+  background-size:16px 2px,2px 16px;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 7px var(--accent)}
+.brand h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.1}
+.brand .slogan{font-size:15px;font-weight:500;color:var(--accent-text)}
+.brand p{margin:0;color:var(--muted);max-width:72ch;font-size:14px}
+.ver{display:inline-flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.chip{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+
+section.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.step h2{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+.step h2 .no{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-size:13px;font-weight:700;border:1px solid var(--accent-line)}
+.hint{color:var(--muted);font-size:13px;margin:0}
+
+/* 버튼 */
+.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line-strong);padding:9px 16px;cursor:pointer;background:var(--panel);color:var(--ink)}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent-text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){background:#14BBF7;color:var(--accent-ink)}
+.btn.primary:disabled{background:var(--line);border-color:var(--line);color:var(--faint)}
+.btn:disabled{cursor:not-allowed}
+.btn.soon{background:var(--head);border-color:var(--line);color:var(--faint);font-weight:500}
+.btn.big{padding:11px 22px;font-size:15.5px}
+.btn.sm{padding:6px 12px;font-size:13.5px}
+.btn:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:3px solid var(--accent-line);outline-offset:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
-table{border-collapse:collapse;width:100%;font-size:13.5px}
-th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-th{background:var(--accent-soft);font-weight:600;font-size:12.5px}
-td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-td.num{font-size:14px;font-weight:500;letter-spacing:.01em}
-#resultTable td:first-child,#popTable td:first-child{font-weight:600}
-tr:last-child td{border-bottom:none}
-th.zone-group{text-align:center;border-left:2px solid var(--accent)}
-td.gs,th.gs{border-left:2px solid var(--accent);font-weight:600}
-input[type=text],select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
-input.name{width:16ch}
-.status{font-size:13.5px;padding:10px 12px;border-radius:8px;background:var(--accent-soft)}
-.status.warn{background:var(--warn-soft);color:var(--warn)}
-.status.err{background:var(--warn-soft);color:var(--bad)}
-.tag{font-size:11.5px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
-.tag.warn{border-color:var(--warn);color:var(--warn)}
-.sample td{color:var(--sample)}
-.sample-badge{font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:5px}
-details{font-size:13.5px;color:var(--muted)}
-details summary{cursor:pointer;color:var(--ink);font-weight:500}
-details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:90ch}
-.rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px}
-.rm:hover{color:var(--bad)}
+
+/* 지도 도구 */
 .maptools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .maptools input[type=text]{width:22ch}
-.btn.sm{padding:6px 12px;font-size:13.5px}
-#map{height:460px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0}
+input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);color:var(--ink);min-width:0}
+.hits{display:flex;gap:6px;flex-wrap:wrap}
+.hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
+#map{height:520px;border:1px solid var(--line);border-radius:10px;background:var(--bg);min-width:0}
+@media (max-width:900px){#map{height:420px}}
 @media (max-width:600px){#map{height:340px}}
 #map.drawing{cursor:crosshair}
-#map .leaflet-container{background:var(--bg)}
-.drawbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13.5px}
-.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
-.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-#drop{padding:18px 16px}
-.hits{display:flex;gap:6px;flex-wrap:wrap}
-.popbox{display:flex;flex-direction:column;gap:6px;max-width:720px}
-.pophead{font-size:13px;font-weight:600;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
-.pophead .hint{font-weight:400;font-size:12px}
-#popTable th,#popTable td{padding:5px 10px;font-size:12.5px}
-.zones{display:flex;gap:8px;flex-wrap:wrap}
-.zones:empty{display:none}
-.zchip{display:inline-flex;align-items:center;gap:8px;padding:4px 4px 4px 10px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);font-size:13px}
-.zchip span{color:var(--muted);font-family:var(--f-num);font-size:12px}
-.zchip.warn{border-color:var(--warn)}
-.zchip .rm{font-size:16px;padding:0 6px}
-.zchip b{outline:none;border-bottom:1px dashed transparent;cursor:text}
-.zchip b:hover,.zchip b:focus{border-bottom-color:var(--accent)}
-.drawtip{position:absolute;z-index:800;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;transform:translate(14px,14px)}
-.drawtip b{color:var(--accent);font-size:15px;font-family:var(--f-num)}
+.drawbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;border-radius:8px;background:var(--accent-soft);border:1px solid var(--accent-line);font-size:13.5px}
+.drawtip{position:absolute;z-index:800;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;font-size:12.5px;box-shadow:0 2px 10px rgba(16,36,58,.16);white-space:nowrap;transform:translate(14px,14px)}
+.drawtip b{color:var(--accent-text);font-size:15px;font-family:var(--f-num)}
 .drawtip small{display:block;color:var(--muted);margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
-.zlabel{background:var(--panel)!important;color:var(--ink)!important;border:1px solid var(--accent)!important;font-family:var(--f-body);font-size:12px;padding:2px 8px!important;box-shadow:none!important}
-.zlabel::before{display:none}
-.mapinfo{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px}
-.mapinfo button{font:inherit;font-weight:600;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+
+/* 지도 위 구역 라벨: 이름 굵게, 면적은 작고 연하게 */
+.zlab-wrap{background:none;border:none}
+.zlab{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap;pointer-events:none;
+  background:rgba(255,255,255,.92);border:1px solid var(--line-strong);border-radius:6px;padding:2px 8px;font-family:var(--f-body);color:#13233A;box-shadow:0 1px 4px rgba(16,36,58,.12)}
+.zlab i{width:8px;height:8px;border-radius:50%;flex:none;align-self:center}
+.zlab b{font-size:12.5px;font-weight:700}
+.zlab small{font-size:11px;color:#5C6B7E;font-variant-numeric:tabular-nums}
+.zlab.on{border-color:currentColor;box-shadow:0 2px 8px rgba(16,36,58,.22);z-index:2}
+.zlab.off{display:none}
+
+/* 지도 컨트롤 */
+.mapinfo{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px}
+.mapinfo button{font:inherit;font-weight:600;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:6px;padding:4px 10px;cursor:pointer}
 .mapinfo span{background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
 .mapinfo span:empty{display:none}
-.basesw{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.basesw{display:flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--panel)}
 .basesw .basebtn{border:none;border-radius:0;padding:4px 10px}
 .basesw .basebtn.on{background:var(--accent);color:var(--accent-ink)}
 .leaflet-control-scale-line{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--muted)!important}
-.hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
+
+/* 파일 넣기: 구역이 생기면 한 줄로 작아짐 */
+#drop{border:1.5px dashed var(--line-strong);border-radius:10px;padding:18px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:4px;align-items:center}
+#drop:hover,#drop:focus-visible,#drop.over{border-color:var(--accent);background:var(--accent-soft);outline:none}
+#drop strong{font-size:16px}
+#drop .short{display:none}
+#drop.compact{padding:8px 14px;flex-direction:row;justify-content:center;gap:10px}
+#drop.compact .full{display:none}
+#drop.compact .short{display:inline;font-size:13.5px;font-weight:600;color:var(--accent-text)}
+#drop.compact .short small{font-weight:400;color:var(--muted);margin-left:6px}
+.or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12.5px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* 구역 목록: 색 점 · 이름(굵게) · 면적(작게) · 빼기(약하게) */
+.zones{display:flex;gap:8px;flex-wrap:wrap}
+.zones:empty{display:none}
+.zitem{display:inline-flex;align-items:center;gap:8px;padding:6px 6px 6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;min-width:0;max-width:100%}
+.zitem:hover{border-color:var(--line-strong)}
+.zitem.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.zitem .dotbtn{width:18px;height:18px;border-radius:50%;border:none;padding:0;cursor:pointer;display:grid;place-items:center;background:transparent;flex:none}
+.zitem .dotbtn i{width:12px;height:12px;border-radius:50%;display:block;border:2px solid transparent}
+.zitem.hid .dotbtn i{background:transparent!important}
+.zitem .ztxt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.zitem .ztxt b{font-size:13.5px;font-weight:700;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22ch}
+.zitem .ztxt b[contenteditable="plaintext-only"]{border-bottom:1px solid var(--accent);background:var(--accent-soft);text-overflow:clip}
+.zitem .ztxt small{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.zitem .ztxt small.warn{color:var(--warn)}
+.zitem.hid .ztxt{opacity:.5}
+.rm{background:none;border:none;color:var(--faint);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:6px}
+.rm:hover{color:var(--bad);background:var(--warn-soft)}
+
+/* 상태 문구 */
+.status{font-size:13.5px;padding:9px 12px;border-radius:8px;background:var(--accent-soft)}
+.status.warn{background:var(--warn-soft);color:var(--warn)}
+.status.err{background:var(--warn-soft);color:var(--bad)}
+.okmsg{font-size:13px;color:var(--ok)}
+.sample-badge{font-size:12px;font-weight:600;color:var(--accent-text);background:var(--accent-soft);padding:3px 9px;border-radius:6px}
+.sample td{color:var(--sample)!important}
+
+/* 결과 표: 핵심 현황 → 용도지역 구성 순서로 읽히게 */
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:10px;position:relative}
+.tablewrap{position:relative}
+.tablewrap.scroll::after{content:"";position:absolute;top:1px;right:1px;bottom:1px;width:28px;border-radius:0 10px 10px 0;pointer-events:none;background:linear-gradient(to right,transparent,rgba(19,35,58,.10))}
+.tablewrap.scroll.end::after{display:none}
+.scrollhint{font-size:12px;color:var(--faint);text-align:right;margin-top:4px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:var(--head);font-weight:600;font-size:12.5px;color:var(--muted)}
+th small{font-weight:400;color:var(--faint);margin-left:2px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FAFCFE}
+#resultTable .namecol{position:sticky;left:0;z-index:1;background:var(--panel);border-right:1px solid var(--line);min-width:9ch}
+#resultTable thead .namecol{background:var(--head);z-index:2;vertical-align:bottom;color:var(--ink)}
+#resultTable td.namecol{font-weight:700;color:var(--ink)}
+#resultTable td.namecol .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:1px}
+#resultTable th.grp{font-size:12px;font-weight:700;letter-spacing:.02em;text-align:left;border-bottom:1px solid var(--line)}
+#resultTable th.grp.core{color:var(--ink);background:var(--accent-soft);border-top:2px solid var(--accent)}
+#resultTable th.grp.zone{color:var(--muted);border-top:2px solid var(--line-strong);border-left:1px solid var(--line-strong)}
+#resultTable th.core{background:var(--accent-soft);color:var(--ink)}
+#resultTable td.core{font-size:14.5px;font-weight:500;color:var(--ink)}
+#resultTable td.z{font-size:13.5px;color:var(--muted)}
+#resultTable td.z.gs{color:var(--ink);font-weight:500}
+#resultTable .zfirst{border-left:1px solid var(--line-strong)}
+#resultTable .zero{color:var(--line-strong)}
+
+/* 참고 인구: 접힌 보조 영역 */
+.popbox{border:1px solid var(--line);border-radius:10px;background:var(--head);max-width:760px}
+.popbox summary{cursor:pointer;padding:9px 12px;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;list-style-position:inside}
+.popbox summary b{color:var(--ink);font-weight:600}
+.popbox summary .sum{font-variant-numeric:tabular-nums}
+.popbox[open] summary{border-bottom:1px solid var(--line)}
+.popbox .popin{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+#popTable th,#popTable td{padding:5px 10px;font-size:12.5px}
+#popTable{background:var(--panel)}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-top:4px}
+details.basis{font-size:13px;color:var(--muted)}
+details.basis summary{cursor:pointer;color:var(--muted);font-weight:500}
+details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:96ch}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 /* Leaflet 1.9.4 CSS (BSD-2, 이미지 규칙 제외) */  .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; } .leaflet-container { overflow: hidden; } .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-user-drag: none; } .leaflet-tile::selection { background: transparent; } .leaflet-safari .leaflet-tile { image-rendering: -webkit-optimize-contrast; } .leaflet-safari .leaflet-tile-container { width: 1600px; height: 1600px; -webkit-transform-origin: 0 0; } .leaflet-marker-icon, .leaflet-marker-shadow { display: block; } .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; } .leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile { max-width: none !important; max-height: none !important; width: auto; padding: 0; } .leaflet-container img.leaflet-tile { mix-blend-mode: plus-lighter; } .leaflet-container.leaflet-touch-zoom { -ms-touch-action: pan-x pan-y; touch-action: pan-x pan-y; } .leaflet-container.leaflet-touch-drag { -ms-touch-action: pinch-zoom; touch-action: none; touch-action: pinch-zoom; } .leaflet-container.leaflet-touch-drag.leaflet-touch-zoom { -ms-touch-action: none; touch-action: none; } .leaflet-container { -webkit-tap-highlight-color: transparent; } .leaflet-container a { -webkit-tap-highlight-color: rgba(51, 181, 229, 0.4); } .leaflet-tile { filter: inherit; visibility: hidden; } .leaflet-tile-loaded { visibility: inherit; } .leaflet-zoom-box { width: 0; height: 0; -moz-box-sizing: border-box; box-sizing: border-box; z-index: 800; } .leaflet-overlay-pane svg { -moz-user-select: none; } .leaflet-pane { z-index: 400; } .leaflet-tile-pane { z-index: 200; } .leaflet-overlay-pane { z-index: 400; } .leaflet-shadow-pane { z-index: 500; } .leaflet-marker-pane { z-index: 600; } .leaflet-tooltip-pane { z-index: 650; } .leaflet-popup-pane { z-index: 700; } .leaflet-map-pane canvas { z-index: 100; } .leaflet-map-pane svg { z-index: 200; } .leaflet-vml-shape { width: 1px; height: 1px; } .leaflet-control { position: relative; z-index: 800; pointer-events: visiblePainted; pointer-events: auto; } .leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; } .leaflet-top { top: 0; } .leaflet-right { right: 0; } .leaflet-bottom { bottom: 0; } .leaflet-left { left: 0; } .leaflet-control { float: left; clear: both; } .leaflet-right .leaflet-control { float: right; } .leaflet-top .leaflet-control { margin-top: 10px; } .leaflet-bottom .leaflet-control { margin-bottom: 10px; } .leaflet-left .leaflet-control { margin-left: 10px; } .leaflet-right .leaflet-control { margin-right: 10px; } .leaflet-fade-anim .leaflet-popup { opacity: 0; -webkit-transition: opacity 0.2s linear; -moz-transition: opacity 0.2s linear; transition: opacity 0.2s linear; } .leaflet-fade-anim .leaflet-map-pane .leaflet-popup { opacity: 1; } .leaflet-zoom-animated { -webkit-transform-origin: 0 0; -ms-transform-origin: 0 0; transform-origin: 0 0; } svg.leaflet-zoom-animated { will-change: transform; } .leaflet-zoom-anim .leaflet-zoom-animated { -webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1); -moz-transition: -moz-transform 0.25s cubic-bezier(0,0,0.25,1); transition: transform 0.25s cubic-bezier(0,0,0.25,1); } .leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile { -webkit-transition: none; -moz-transition: none; transition: none; } .leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; } .leaflet-interactive { cursor: pointer; } .leaflet-grab { cursor: -webkit-grab; cursor: -moz-grab; cursor: grab; } .leaflet-crosshair, .leaflet-crosshair .leaflet-interactive { cursor: crosshair; } .leaflet-popup-pane, .leaflet-control { cursor: auto; } .leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive, .leaflet-dragging .leaflet-marker-draggable { cursor: move; cursor: -webkit-grabbing; cursor: -moz-grabbing; cursor: grabbing; } .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none; } .leaflet-marker-icon.leaflet-interactive, .leaflet-image-layer.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive, svg.leaflet-image-layer.leaflet-interactive path { pointer-events: visiblePainted; pointer-events: auto; } .leaflet-container { background: #ddd; outline-offset: 1px; } .leaflet-container a { color: #0078A8; } .leaflet-zoom-box { border: 2px dotted #38f; background: rgba(255,255,255,0.5); } .leaflet-container { font-family: "Helvetica Neue", Arial, Helvetica, sans-serif; font-size: 12px; font-size: 0.75rem; line-height: 1.5; } .leaflet-bar { box-shadow: 0 1px 5px rgba(0,0,0,0.65); border-radius: 4px; } .leaflet-bar a { background-color: #fff; border-bottom: 1px solid #ccc; width: 26px; height: 26px; line-height: 26px; display: block; text-align: center; text-decoration: none; color: black; } .leaflet-bar a, .leaflet-control-layers-toggle { background-position: 50% 50%; background-repeat: no-repeat; display: block; } .leaflet-bar a:hover, .leaflet-bar a:focus { background-color: #f4f4f4; } .leaflet-bar a:first-child { border-top-left-radius: 4px; border-top-right-radius: 4px; } .leaflet-bar a:last-child { border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; border-bottom: none; } .leaflet-bar a.leaflet-disabled { cursor: default; background-color: #f4f4f4; color: #bbb; } .leaflet-touch .leaflet-bar a { width: 30px; height: 30px; line-height: 30px; } .leaflet-touch .leaflet-bar a:first-child { border-top-left-radius: 2px; border-top-right-radius: 2px; } .leaflet-touch .leaflet-bar a:last-child { border-bottom-left-radius: 2px; border-bottom-right-radius: 2px; } .leaflet-control-zoom-in, .leaflet-control-zoom-out { font: bold 18px 'Lucida Console', Monaco, monospace; text-indent: 1px; } .leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out { font-size: 22px; } .leaflet-control-layers { box-shadow: 0 1px 5px rgba(0,0,0,0.4); background: #fff; border-radius: 5px; } .leaflet-touch .leaflet-control-layers-toggle { width: 44px; height: 44px; } .leaflet-control-layers .leaflet-control-layers-list, .leaflet-control-layers-expanded .leaflet-control-layers-toggle { display: none; } .leaflet-control-layers-expanded .leaflet-control-layers-list { display: block; position: relative; } .leaflet-control-layers-expanded { padding: 6px 10px 6px 6px; color: #333; background: #fff; } .leaflet-control-layers-scrollbar { overflow-y: scroll; overflow-x: hidden; padding-right: 5px; } .leaflet-control-layers-selector { margin-top: 2px; position: relative; top: 1px; } .leaflet-control-layers label { display: block; font-size: 13px; font-size: 1.08333em; } .leaflet-control-layers-separator { height: 0; border-top: 1px solid #ddd; margin: 5px -10px 5px -6px; } .leaflet-container .leaflet-control-attribution { background: #fff; background: rgba(255, 255, 255, 0.8); margin: 0; } .leaflet-control-attribution, .leaflet-control-scale-line { padding: 0 5px; color: #333; line-height: 1.4; } .leaflet-control-attribution a { text-decoration: none; } .leaflet-control-attribution a:hover, .leaflet-control-attribution a:focus { text-decoration: underline; } .leaflet-attribution-flag { display: inline !important; vertical-align: baseline !important; width: 1em; height: 0.6669em; } .leaflet-left .leaflet-control-scale { margin-left: 5px; } .leaflet-bottom .leaflet-control-scale { margin-bottom: 5px; } .leaflet-control-scale-line { border: 2px solid #777; border-top: none; line-height: 1.1; padding: 2px 5px 1px; white-space: nowrap; -moz-box-sizing: border-box; box-sizing: border-box; background: rgba(255, 255, 255, 0.8); text-shadow: 1px 1px #fff; } .leaflet-control-scale-line:not(:first-child) { border-top: 2px solid #777; border-bottom: none; margin-top: -2px; } .leaflet-control-scale-line:not(:first-child):not(:last-child) { border-bottom: 2px solid #777; } .leaflet-touch .leaflet-control-attribution, .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { box-shadow: none; } .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar { border: 2px solid rgba(0,0,0,0.2); background-clip: padding-box; } .leaflet-popup { position: absolute; text-align: center; margin-bottom: 20px; } .leaflet-popup-content-wrapper { padding: 1px; text-align: left; border-radius: 12px; } .leaflet-popup-content { margin: 13px 24px 13px 20px; line-height: 1.3; font-size: 13px; font-size: 1.08333em; min-height: 1px; } .leaflet-popup-content p { margin: 17px 0; margin: 1.3em 0; } .leaflet-popup-tip-container { width: 40px; height: 20px; position: absolute; left: 50%; margin-top: -1px; margin-left: -20px; overflow: hidden; pointer-events: none; } .leaflet-popup-tip { width: 17px; height: 17px; padding: 1px; margin: -10px auto 0; pointer-events: auto; -webkit-transform: rotate(45deg); -moz-transform: rotate(45deg); -ms-transform: rotate(45deg); transform: rotate(45deg); } .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: white; color: #333; box-shadow: 0 3px 14px rgba(0,0,0,0.4); } .leaflet-container a.leaflet-popup-close-button { position: absolute; top: 0; right: 0; border: none; text-align: center; width: 24px; height: 24px; font: 16px/24px Tahoma, Verdana, sans-serif; color: #757575; text-decoration: none; background: transparent; } .leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus { color: #585858; } .leaflet-popup-scrolled { overflow: auto; } .leaflet-oldie .leaflet-popup-content-wrapper { -ms-zoom: 1; } .leaflet-oldie .leaflet-popup-tip { width: 24px; margin: 0 auto; -ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)"; filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678); } .leaflet-oldie .leaflet-control-zoom, .leaflet-oldie .leaflet-control-layers, .leaflet-oldie .leaflet-popup-content-wrapper, .leaflet-oldie .leaflet-popup-tip { border: 1px solid #999; } .leaflet-div-icon { background: #fff; border: 1px solid #666; } .leaflet-tooltip { position: absolute; padding: 6px; background-color: #fff; border: 1px solid #fff; border-radius: 3px; color: #222; white-space: nowrap; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.4); } .leaflet-tooltip.leaflet-interactive { cursor: pointer; pointer-events: auto; } .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { position: absolute; pointer-events: none; border: 6px solid transparent; background: transparent; content: ""; } .leaflet-tooltip-bottom { margin-top: 6px; } .leaflet-tooltip-top { margin-top: -6px; } .leaflet-tooltip-bottom:before, .leaflet-tooltip-top:before { left: 50%; margin-left: -6px; } .leaflet-tooltip-top:before { bottom: 0; margin-bottom: -12px; border-top-color: #fff; } .leaflet-tooltip-bottom:before { top: 0; margin-top: -12px; margin-left: -6px; border-bottom-color: #fff; } .leaflet-tooltip-left { margin-left: -6px; } .leaflet-tooltip-right { margin-left: 6px; } .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { top: 50%; margin-top: -6px; } .leaflet-tooltip-left:before { right: 0; margin-right: -12px; border-left-color: #fff; } .leaflet-tooltip-right:before { left: 0; margin-left: -12px; border-right-color: #fff; } @media print { .leaflet-control { -webkit-print-color-adjust: exact; print-color-adjust: exact; } } 
 .leaflet-container{font-family:var(--f-body)}
-.leaflet-control-zoom a{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--line-strong)!important}
 </style>
 
 <div class="wrap">
-  <header>
-    <h1>구역 연면적 집계기</h1>
-    <p>지도에 구역을 그리거나 구역 GIS 파일을 넣으면, 그 안의 서울 필지를 찾아 필지수·주거 세대수·주거/비주거 연면적·용도지역별 면적을 계산해 엑셀로 드립니다. 넣은 파일은 이 컴퓨터 안에서만 처리되고 어디에도 올라가지 않습니다.</p>
+  <header class="brand">
+    <div class="brand-row"><span class="mark" aria-hidden="true"></span><h1>Field-Scan</h1><span class="slogan">구역 현황을 한눈에</span></div>
+    <p>구역을 그리거나 GIS 파일을 넣으면 토지·건축물 현황을 자동으로 집계합니다. 넣은 파일은 이 컴퓨터 안에서만 처리되고 어디에도 올라가지 않습니다.</p>
     <div class="ver"><span class="chip" id="verChip">자료 불러오는 중…</span><span class="chip">서울특별시만 계산</span></div>
   </header>
 
@@ -118,40 +192,49 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     <h2 id="s1"><span class="no">1</span>구역 정하기</h2>
     <div class="maptools">
       <input type="text" id="q" placeholder="예: 창신동 23-1" aria-label="동·지번 찾기">
-      <button class="btn sm ghost" id="qBtn">찾기</button>
-      <button class="btn sm" id="drawBtn">구역 그리기</button>
+      <button class="btn sm" id="qBtn">찾기</button>
+      <button class="btn sm primary" id="drawBtn">구역 그리기</button>
       <span class="hits" id="hits"></span>
     </div>
     <div class="drawbar" id="drawBar" hidden>
       <span id="drawMsg">지도를 눌러 구역 모서리를 차례로 찍으세요.</span>
-      <button class="btn sm" id="doneBtn" disabled>완료</button>
-      <button class="btn sm ghost" id="undoBtn" disabled>점 하나 지우기</button>
-      <button class="btn sm ghost" id="cancelBtn">그만두기</button>
+      <button class="btn sm primary" id="doneBtn" disabled>완료</button>
+      <button class="btn sm" id="undoBtn" disabled>점 하나 지우기</button>
+      <button class="btn sm" id="cancelBtn">그만두기</button>
     </div>
     <div id="map" tabindex="0" aria-label="서울 지도"></div>
-    <p class="hint">확대하면 지적선(필지 경계)이 보입니다. 오른쪽 위에서 일반지도·위성을 바꿀 수 있습니다. 그린 구역과 넣은 파일의 구역은 초록색으로 표시됩니다.</p>
     <div class="or">또는 GIS 파일 넣기</div>
-    <div id="drop" tabindex="0" role="button" aria-label="파일 선택">
-      <strong>파일을 여기에 끌어다 놓거나, 눌러서 고르세요</strong>
-      <span class="hint">SHP 묶음(.shp·.prj·.dbf·.shx), 그 묶음을 압축한 .zip, 또는 .gpkg 파일. 여러 개를 한 번에 넣어도 됩니다.</span>
+    <div id="drop" tabindex="0" role="button" aria-label="GIS 파일 넣기">
+      <strong class="full">파일을 여기에 끌어다 놓거나, 눌러서 고르세요</strong>
+      <span class="hint full">SHP 묶음(.shp·.prj·.dbf·.shx), 그 묶음을 압축한 .zip, 또는 .gpkg 파일. 여러 개를 한 번에 넣어도 됩니다.</span>
+      <span class="short">+ GIS 파일 더 넣기<small>SHP · ZIP · GPKG, 끌어다 놓아도 됩니다</small></span>
     </div>
     <input type="file" id="fileInput" multiple accept=".zip,.shp,.shx,.dbf,.prj,.cpg,.gpkg" hidden>
     <div class="zones" id="zones" aria-label="넣은 구역"></div>
-    <p class="hint" id="zonesHint" hidden>구역 이름을 누르면 고칠 수 있습니다(엑셀의 '명칭'). 이름이 같은 구역은 하나로 합쳐 계산합니다.</p>
+    <p class="hint" id="zonesHint" hidden>구역을 누르면 지도에서 강조됩니다. 색 점을 누르면 지도에서 숨기기·보이기, 이름을 두 번 누르면 이름 고치기(엑셀의 '명칭'). 이름이 같은 구역은 하나로 합쳐 계산합니다.</p>
     <p id="runStatus" class="hint"></p>
   </section>
-
 
   <section class="step" aria-labelledby="s3">
     <h2 id="s3"><span class="no">2</span>현황 집계 결과</h2>
     <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
-    <div class="tablebox"><table id="resultTable"></table></div>
-    <div class="popbox" id="popBox" hidden>
-      <div class="pophead">참고 · 추정 인구 <span class="hint">구역에 통째로 들어온 집계구는 2024년 실측 인구, 나머지는 세대수 × 집계구 평균가구원수</span></div>
-      <div class="tablebox"><table id="popTable"></table></div>
+    <div>
+      <div class="tablewrap" id="tableWrap"><div class="tablebox" id="tableBox"><table id="resultTable"></table></div></div>
+      <div class="scrollhint" id="scrollHint" hidden>옆으로 넘기면 용도지역이 더 있습니다 →</div>
     </div>
-    <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><button class="btn ghost" id="step2Btn" disabled title="다음 단계에서 제공할 예정입니다">공공기여 계산 · 준비 중</button><span id="dlStatus" class="hint"></span></div>
-    <details>
+    <details class="popbox" id="popBox" hidden>
+      <summary><b>참고 · 추정 인구</b><span class="sum" id="popSum"></span><span>— 펼쳐 보기</span></summary>
+      <div class="popin">
+        <div class="tablebox"><table id="popTable"></table></div>
+        <p class="hint">구역에 통째로 들어온 집계구는 2024년 실측 인구, 나머지는 세대수 × 집계구 평균가구원수로 추정한 참고값입니다. 자세한 기준은 아래 '계산 기준'에 있습니다.</p>
+      </div>
+    </details>
+    <div class="actions">
+      <button class="btn primary big" id="xlsxBtn" disabled>엑셀로 받기</button>
+      <button class="btn soon" id="step2Btn" disabled title="다음 단계에서 제공할 예정입니다">공공기여 계산 · 준비 중</button>
+      <span id="dlStatus" class="okmsg" hidden></span>
+    </div>
+    <details class="basis">
       <summary>계산 기준</summary>
       <ul id="basis"></ul>
     </details>
@@ -391,17 +474,28 @@ function renderLayers(){
   const box=$("#zones"); box.innerHTML="";
   for(const L of layers){
     const warn = !L.crs || (L.note && !/^(파일에|지도에서)/.test(L.note));
-    const a = L.crs ? layerArea(L) : null;
-    const chip=document.createElement("span"); chip.className="zchip"+(warn?" warn":"");
-    chip.title = L.file + (L.note ? " · " + L.note : "");
-    chip.innerHTML = `<b contenteditable="plaintext-only" spellcheck="false" title="눌러서 이름 고치기">${esc(L.name)}</b>${a!=null?`<span>${fmt(a)}㎡</span>`:""}${warn?`<span>${esc(L.crs?"좌표계 추정":"좌표계 모름")}</span>`:""}<button class="rm" aria-label="${esc(L.name)} 빼기">×</button>`;
-    chip.querySelector(".rm").addEventListener("click",()=>{ layers=layers.filter(x=>x.id!==L.id); renderLayers(); scheduleRun(); });
-    const nm = chip.querySelector("b");
-    nm.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
-    nm.addEventListener("blur", () => { const v = nm.textContent.trim(); if (v && v !== L.name) { L.name = v; drawOverlays(); scheduleRun(); } else nm.textContent = L.name; });
-    box.appendChild(chip);
+    if (L._area === undefined) L._area = L.crs ? layerArea(L) : null;
+    const k = groupKey(L), col = L.crs ? colorOf(k) : "#B9C3CF", hid = hiddenKeys.has(k);
+    const it=document.createElement("div"); it.className="zitem"+(hid?" hid":"")+(k===selectedKey?" sel":""); it.dataset.k=k;
+    it.title = L.file + (L.note ? " · " + L.note : "");
+    it.innerHTML = `<button class="dotbtn" aria-pressed="${!hid}" aria-label="${esc(L.name)} 지도에서 ${hid?"보이기":"숨기기"}" title="지도에서 ${hid?"보이기":"숨기기"}"><i style="background:${col};border-color:${col}"></i></button>`+
+      `<span class="ztxt"><b title="두 번 눌러 이름 고치기">${esc(L.name)}</b>`+
+      `${warn?`<small class="warn">${esc(L.crs?"좌표계 추정 — 위치를 확인하세요":"좌표계를 알 수 없음")}</small>`:(L._area!=null?`<small>${fmt(L._area)}㎡</small>`:"")}</span>`+
+      `<button class="rm" aria-label="${esc(L.name)} 빼기" title="빼기">×</button>`;
+    it.querySelector(".rm").addEventListener("click",e=>{ e.stopPropagation(); layers=layers.filter(x=>x.id!==L.id); renderLayers(); scheduleRun(); });
+    it.querySelector(".dotbtn").addEventListener("click",e=>{ e.stopPropagation(); hiddenKeys.has(k)?hiddenKeys.delete(k):hiddenKeys.add(k); renderLayers(); });
+    const nm = it.querySelector(".ztxt b");
+    nm.addEventListener("dblclick", e => { e.stopPropagation(); nm.setAttribute("contenteditable","plaintext-only"); nm.focus();
+      const r=document.createRange(); r.selectNodeContents(nm); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); });
+    nm.addEventListener("click", e => { if (nm.isContentEditable) e.stopPropagation(); });
+    nm.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); nm.blur(); } if (e.key === "Escape") { nm.textContent = L.name; nm.blur(); } });
+    nm.addEventListener("blur", () => { nm.removeAttribute("contenteditable"); const v = nm.textContent.trim();
+      if (v && v !== L.name) { if (selectedKey === k) selectedKey = v; L.name = v; renderLayers(); scheduleRun(); } else nm.textContent = L.name; });
+    it.addEventListener("click", () => { if (!L.crs) return; selectZone(selectedKey === k ? null : k, true); });
+    box.appendChild(it);
   }
   $("#zonesHint").hidden = !layers.length;
+  $("#drop").classList.toggle("compact", layers.length > 0);
   drawOverlays();
 }
 let runTimer=null, running=false, runAgain=false;
@@ -475,6 +569,7 @@ async function run(){
   if(!META){ setRun("자료를 불러오는 중입니다. 잠시 뒤 자동으로 계산합니다.","warn"); setTimeout(scheduleRun, 1500); return; }
   try{
     results = await computeStep1(layers, msg => setRun(msg));
+    $("#dlStatus").hidden = true;
     renderResults();
     setRun(`계산 완료: 구역 ${results.rows.length}개, 필지 ${fmt(results.rows.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
     if(results.warns.length) setRun(results.warns.join(" / "),"warn");
@@ -505,20 +600,30 @@ function renderResults(){
   const rows = results ? results.rows : SAMPLE;
   $("#sampleBadge").hidden = !!results;
   const zc = results ? zoneCols(rows) : ["일반상업지역"];
-  const t=$("#resultTable");
-  t.innerHTML = `<thead><tr><th rowspan="2">명칭</th><th rowspan="2" class="num">총 면적(㎡)</th><th rowspan="2" class="num">필지수</th><th rowspan="2" class="num">필지면적(㎡)</th>
-    <th rowspan="2" class="num">주거 세대수</th><th rowspan="2" class="num">주거연면적(㎡)</th><th rowspan="2" class="num">비주거연면적(㎡)</th>
-    <th colspan="${zc.length}" class="zone-group">용도지역별 면적(㎡)</th></tr>
-    <tr>${zc.map((z,i)=>`<th class="num ${i===0?"gs":""}">${esc(z)}</th>`).join("")}</tr></thead>
-    <tbody class="${results?"":"sample"}">${rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num">${fmt(r.total)}</td><td class="num">${fmt(r.n)}</td><td class="num">${fmt(r.area)}</td>
-    <td class="num">${fmt(r.units)}</td><td class="num">${fmt(r.res)}</td><td class="num">${fmt(r.non)}</td>
-    ${zc.map((z,i)=>`<td class="num ${i===0?"gs":""}">${fmt(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  const CORE = [["총 면적","㎡","total"],["필지수","","n"],["필지면적","㎡","area"],["주거 세대수","","units"],["주거연면적","㎡","res"],["비주거연면적","㎡","non"]];
+  const dot = r => results ? `<i class="dot" style="background:${colorOf(r.name)}"></i>` : "";
+  const zv = v => v > 0 ? fmt(v) : '<span class="zero">–</span>';
+  $("#resultTable").innerHTML = `<thead>
+    <tr><th rowspan="2" class="namecol">구역</th><th colspan="${CORE.length}" class="grp core">핵심 현황</th><th colspan="${zc.length}" class="grp zone">용도지역 구성 <small>(㎡)</small></th></tr>
+    <tr>${CORE.map(c=>`<th class="num core">${c[0]}${c[1]?`<small>${c[1]}</small>`:""}</th>`).join("")}${zc.map((z,i)=>`<th class="num${i===0?" zfirst":""}">${esc(z)}</th>`).join("")}</tr></thead>
+    <tbody class="${results?"":"sample"}">${rows.map(r=>`<tr><td class="namecol">${dot(r)}${esc(r.name)}</td>${CORE.map(c=>`<td class="num core">${fmt(r[c[2]])}</td>`).join("")}
+    ${zc.map((z,i)=>`<td class="num z${i===0?" zfirst gs":""}">${zv(r.zone[z]||0)}</td>`).join("")}</tr>`).join("")}</tbody>`;
   $("#xlsxBtn").disabled = !results;
+  updateScrollHint();
   const pb=$("#popBox"); pb.hidden = !results;
-  if (results) $("#popTable").innerHTML = `<thead><tr><th>명칭</th><th class="num">추정 인구(명)</th><th class="num">실측분</th><th class="num">추정분</th><th class="num">실측 비율</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num"><b>${fmt(r.pop.total)}</b></td><td class="num">${fmt(r.pop.measured)}</td><td class="num">${fmt(r.pop.est)}</td>
+  if (results) {
+    $("#popSum").textContent = `합계 약 ${fmt(rows.reduce((t,r)=>t+r.pop.total,0))}명`;
+    $("#popTable").innerHTML = `<thead><tr><th>구역</th><th class="num">추정 인구(명)</th><th class="num">실측분</th><th class="num">추정분</th><th class="num">실측 비율</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${dot(r)}${esc(r.name)}</td><td class="num">${fmt(r.pop.total)}</td><td class="num">${fmt(r.pop.measured)}</td><td class="num">${fmt(r.pop.est)}</td>
     <td class="num">${r.pop.total ? fmt(100*r.pop.measured/r.pop.total) + "%" : "-"}</td></tr>`).join("")}</tbody>`;
+  }
+  if (typeof drawOverlays === "function" && results) drawOverlays();   // 지도 라벨 면적을 계산값으로 맞춤
 }
+function updateScrollHint(){
+  const box=$("#tableBox"), wrap=$("#tableWrap"); const sc = box.scrollWidth > box.clientWidth + 2;
+  wrap.classList.toggle("scroll", sc); wrap.classList.toggle("end", box.scrollLeft + box.clientWidth >= box.scrollWidth - 2); $("#scrollHint").hidden = !sc;
+}
+$("#tableBox").addEventListener("scroll", updateScrollHint); window.addEventListener("resize", updateScrollHint);
 
 /* ---------- 엑셀: 시트 빌더를 순서대로 붙임. STEP 2가 준비되면 STEP2.sheets(ctx)가 '기준' 앞에 들어감 */
 const sheetStep1Summary = ctx => {
@@ -562,6 +667,7 @@ function buildWorkbook(){
   const sheets = [sheetStep1Summary(ctx), sheetStep1Parcels(ctx), sheetStep1Population(ctx),
                   ...(STEP2.ready ? STEP2.sheets(ctx) : []), sheetBasis(ctx)].filter(Boolean);
   const wb = XLSX.utils.book_new();
+  wb.Props = { Title: "Field-Scan 구역 현황 집계", Subject: "구역 현황을 한눈에", Author: "Field-Scan", Company: "Field-Scan" };
   for (const sh of sheets) XLSX.utils.book_append_sheet(wb, sh.ws, sh.name);
   return XLSX.write(wb, { bookType: "xlsx", type: "array" });
 }
@@ -570,12 +676,13 @@ let downloads=null;
 $("#xlsxBtn").addEventListener("click", async()=>{
   if(!results) return;
   const data=buildWorkbook(); const fname=`구역집계_${new Date().toISOString().slice(0,10)}.xlsx`; const st=$("#dlStatus");
+  const show=(msg, ok)=>{ st.textContent=msg; st.className = ok ? "okmsg" : "hint"; st.hidden=false; };
   if(downloads){
-    try{ const r=await downloads.save({filename:fname, data:new Blob([data])}); st.textContent = r.status==="saved" ? "엑셀 파일을 저장했습니다." : "파일을 보냈습니다."; }
-    catch(e){ st.textContent = e && e.code==="declined" ? "저장을 취소했습니다. 다시 누르면 받을 수 있습니다." : "이 화면에서는 저장할 수 없습니다. claude.ai에서 페이지를 열어 다시 시도하세요."; }
-  } else if(!(window.claude)){ // 바깥에서 파일로 연 경우
-    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data])); a.download=fname; a.click(); st.textContent="엑셀 파일을 저장했습니다.";
-  } else st.textContent = "이 화면에서는 저장할 수 없습니다. claude.ai에서 페이지를 열어 다시 시도하세요.";
+    try{ const r=await downloads.save({filename:fname, data:new Blob([data])}); show(r.status==="saved" ? "엑셀 파일을 저장했습니다." : "파일을 보냈습니다.", true); }
+    catch(e){ show(e && e.code==="declined" ? "저장을 취소했습니다. 다시 누르면 받을 수 있습니다." : "이 화면에서는 저장할 수 없습니다.", false); }
+  } else if(!(window.claude)){
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data])); a.download=fname; a.click(); show("엑셀 파일을 저장했습니다.", true);
+  } else show("이 화면에서는 저장할 수 없습니다.", false);
 });
 
 /* ---------- 지도: 브이월드 배경지도(일반·위성) 위에 지적선과 구역을 그림. 계산 좌표는 EPSG:5186 미터 */
@@ -596,6 +703,7 @@ let baseKind = "base"; BASEMAPS.base.forEach(t => t.addTo(map));
 function setBase(kind) {
   if (kind === baseKind) return; BASEMAPS[baseKind].forEach(t => map.removeLayer(t)); BASEMAPS[kind].forEach(t => t.addTo(map).bringToBack());
   baseKind = kind; document.querySelectorAll(".basebtn").forEach(b => b.classList.toggle("on", b.dataset.k === kind)); parcels.redraw();
+  if (seoulMask) seoulMask.setStyle({ fillOpacity: MASK_OPACITY[kind] });
 }
 L.control.scale({ imperial: false, maxWidth: 140, position: "bottomleft" }).addTo(map);
 const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
@@ -644,18 +752,90 @@ const ParcelLayer = L.GridLayer.extend({
 });
 const parcels = new ParcelLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 5, updateWhenZooming: false }).addTo(map);
 const overlay = L.layerGroup().addTo(map);
+const labelLayer = L.layerGroup().addTo(map);
+
+/* 서울 밖은 반투명 흰 마스크로 흐리게, 서울 경계는 하늘색 선. 지도 조작을 막지 않도록 클릭이 통과하는 별도 층에 둠 */
+map.createPane("seoulMask"); map.getPane("seoulMask").style.zIndex = 350; map.getPane("seoulMask").style.pointerEvents = "none";
+const MASK_OPACITY = { base: 0.45, sat: 0.35 };   // 흰 마스크 불투명도(= 55~65% 투명)
+let seoulMask = null;
+fetchBin("data/seoul.dat").then(b => {
+  const rings = JSON.parse(new TextDecoder().decode(b));
+  const world = [[-85, -179.9], [-85, 179.9], [85, 179.9], [85, -179.9]];
+  seoulMask = L.polygon([world, ...rings], { pane: "seoulMask", stroke: false, fillColor: "#FFFFFF", fillOpacity: MASK_OPACITY[baseKind], interactive: false }).addTo(map);
+  L.polygon(rings, { pane: "seoulMask", fill: false, color: "#00AFF0", weight: 2.5, opacity: .95, interactive: false }).addTo(map);
+}).catch(() => {});
+
+/* 구역 색: 이름(=합쳐 계산되는 단위)마다 하나. 지도 도형·구역 목록 점·결과표 점이 같은 색 */
+const ZONE_COLORS = ["#2F6FDE", "#E2702A", "#2A9D6A", "#C23F86", "#7657D3", "#B98D12", "#178F9E", "#8A5A3B"];
+const nameColor = new Map(); const hiddenKeys = new Set();
+let selectedKey = null, hoverKey = null;
+const zoneShapes = new Map();   // 이름 → { shapes, color, labelLL, area, marker }
+function groupKey(L0) { return (L0.name || L0.file).trim(); }
+function colorOf(k) {
+  if (!nameColor.has(k)) { const used = new Set(nameColor.values()); nameColor.set(k, ZONE_COLORS.find(c => !used.has(c)) || ZONE_COLORS[nameColor.size % ZONE_COLORS.length]); }
+  return nameColor.get(k);
+}
 function drawOverlays() {
-  overlay.clearLayers(); const col = css("--accent");
+  overlay.clearLayers(); labelLayer.clearLayers(); zoneShapes.clear();
+  const keys = new Set(layers.filter(L0 => L0.crs).map(groupKey));
+  for (const k of [...nameColor.keys()]) if (!keys.has(k)) nameColor.delete(k);
+  for (const k of [...hiddenKeys]) if (!keys.has(k)) hiddenKeys.delete(k);
+  if (selectedKey && !keys.has(selectedKey)) selectedKey = null;
+  const groups = new Map();
   for (const L0 of layers) {
     if (!L0.crs) continue;
-    let polys; try { polys = toSeoul(L0.polys, L0.crs); } catch (e) { continue; }
-    for (const p of polys) L.polygon(p.map(r => r.map(q => LL(q[0], q[1]))), { color: col, weight: 2, fillOpacity: .15, interactive: false }).addTo(overlay);
-    if (!polys.length) continue;
-    const b = bboxOf(polys), area = polys.reduce((t, p) => t + polyArea(p), 0);
-    L.tooltip({ permanent: true, direction: "center", className: "zlabel", interactive: false })
-      .setLatLng(LL((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)).setContent(`${esc(L0.name)} · ${fmt(area)}㎡`).addTo(overlay);
+    if (!L0._ll) { try { L0._xy = toSeoul(L0.polys, L0.crs); L0._ll = L0._xy.map(p => p.map(r => r.map(q => LL(q[0], q[1])))); } catch (e) { continue; } }
+    const k = groupKey(L0); let g = groups.get(k); if (!g) groups.set(k, g = { xy: [], ll: [] });
+    g.xy.push(...L0._xy); g.ll.push(...L0._ll);
+  }
+  for (const [k, g] of groups) {
+    const color = colorOf(k);
+    if (hiddenKeys.has(k) || !g.xy.length) continue;
+    const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2 }).addTo(overlay));
+    for (const sh of shapes) {
+      sh.on("mouseover", () => { if (drawing) return; hoverKey = k; styleZones(); placeLabels(); });
+      sh.on("mouseout", () => { if (hoverKey === k) { hoverKey = null; styleZones(); placeLabels(); } });
+      sh.on("click", e => { if (drawing) return; L.DomEvent.stopPropagation(e); selectZone(selectedKey === k ? null : k, false); });
+    }
+    let big = g.xy[0], bigA = polyArea(big); for (const q of g.xy) { const a = polyArea(q); if (a > bigA) { big = q; bigA = a; } }
+    const b = bboxOf([big]);
+    const row = results && results.rows.find(r => r.name === k);
+    const area = row ? row.total : g.xy.reduce((t, q) => t + polyArea(q), 0);
+    zoneShapes.set(k, { shapes, color, labelLL: LL((b[0] + b[2]) / 2, (b[1] + b[3]) / 2), area });
+  }
+  styleZones(); placeLabels();
+}
+function styleZones() {
+  const focus = hoverKey || selectedKey;
+  for (const [k, z] of zoneShapes) {
+    const on = k === selectedKey || k === hoverKey, dim = !!focus && !on;
+    for (const sh of z.shapes) sh.setStyle({ color: z.color, fillColor: z.color, weight: on ? 3.5 : 2, opacity: dim ? .4 : .95, fillOpacity: on ? .24 : (dim ? .04 : .12) });
+    if (on) z.shapes.forEach(sh => sh.bringToFront());
+  }
+  document.querySelectorAll(".zitem").forEach(el => el.classList.toggle("sel", el.dataset.k === selectedKey));
+}
+function selectZone(k, fit) {
+  selectedKey = k; styleZones(); placeLabels();
+  if (k && fit) { const z = zoneShapes.get(k); if (z) map.fitBounds(L.featureGroup(z.shapes).getBounds(), { padding: [30, 30], maxZoom: 17 }); }
+}
+/* 라벨: 선택·마우스 올린 구역 → 큰 구역 순으로 놓고, 겹치는 라벨은 숨김 */
+function placeLabels() {
+  labelLayer.clearLayers(); if (!zoneShapes.size) return;
+  const order = [...zoneShapes.entries()].sort((a, b) => (b[0] === selectedKey) - (a[0] === selectedKey) || (b[0] === hoverKey) - (a[0] === hoverKey) || b[1].area - a[1].area);
+  const size = map.getSize(), placed = [];
+  for (const [k, z] of order) {
+    const on = k === selectedKey || k === hoverKey;
+    const pt = map.latLngToContainerPoint(z.labelLL);
+    if (pt.x < -40 || pt.y < -20 || pt.x > size.x + 40 || pt.y > size.y + 20) continue;
+    const w = 26 + 7.5 * k.length + 6.5 * fmt(z.area).length, h = 24;
+    const box = [pt.x - w / 2, pt.y - h / 2, pt.x + w / 2, pt.y + h / 2];
+    if (placed.some(q => !(box[2] < q[0] || box[0] > q[2] || box[3] < q[1] || box[1] > q[3]))) continue;
+    placed.push(box);
+    const html = `<span class="zlab${on ? " on" : ""}" style="color:${z.color}"><i style="background:${z.color}"></i><b style="color:#13233A">${esc(k)}</b><small>${fmt(z.area)}㎡</small></span>`;
+    L.marker(z.labelLL, { icon: L.divIcon({ className: "zlab-wrap", html, iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: on ? 1000 : 0 }).addTo(labelLayer);
   }
 }
+map.on("zoomend moveend", placeLabels);
 function fitToLayers(ls) {
   const all = []; for (const L0 of ls) { try { all.push(...toSeoul(L0.polys, L0.crs)); } catch (e) {} }
   if (!all.length) return; const b = bboxOf(all);
@@ -687,6 +867,7 @@ function drawRefresh() {
   }
 }
 function setDrawing(on) {
+  if (on) { hoverKey = null; }
   drawing = on ? { pts: [], cur: null } : null; $("#drawBar").hidden = !on; $("#drawBtn").disabled = on;
   $("#map").classList.toggle("drawing", on); drawRefresh(); if (on) $("#map").focus();
 }
