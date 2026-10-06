@@ -93,6 +93,9 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .mapinfo button{font:inherit;font-weight:600;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 .mapinfo span{background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
 .mapinfo span:empty{display:none}
+.basesw{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.basesw .basebtn{border:none;border-radius:0;padding:4px 10px}
+.basesw .basebtn.on{background:var(--accent);color:var(--accent-ink)}
 .leaflet-control-scale-line{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--muted)!important}
 .hits button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer}
 [hidden]{display:none!important}
@@ -123,8 +126,8 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <button class="btn sm ghost" id="undoBtn" disabled>점 하나 지우기</button>
       <button class="btn sm ghost" id="cancelBtn">그만두기</button>
     </div>
-    <div id="map" tabindex="0" aria-label="서울 지적도"></div>
-    <p class="hint">멀리서는 법정동 경계, 가까이 확대하면 필지선이 보입니다. 회색은 도로, 파란색은 하천입니다. 그린 구역과 넣은 파일의 구역은 초록색으로 표시됩니다.</p>
+    <div id="map" tabindex="0" aria-label="서울 지도"></div>
+    <p class="hint">확대하면 지적선(필지 경계)이 보입니다. 오른쪽 위에서 일반지도·위성을 바꿀 수 있습니다. 그린 구역과 넣은 파일의 구역은 초록색으로 표시됩니다.</p>
     <div class="or">또는 GIS 파일 넣기</div>
     <div id="drop" tabindex="0" role="button" aria-label="파일 선택">
       <strong>파일을 여기에 끌어다 놓거나, 눌러서 고르세요</strong>
@@ -540,78 +543,71 @@ $("#xlsxBtn").addEventListener("click", async()=>{
   } else st.textContent = "이 화면에서는 저장할 수 없습니다. claude.ai에서 페이지를 열어 다시 시도하세요.";
 });
 
-/* ---------- 지도 (외부 지도 타일 없이 지적도를 직접 그림, 좌표 = EPSG:5186 미터) */
+/* ---------- 지도: 브이월드 배경지도(일반·위성) 위에 지적선과 구역을 그림. 계산 좌표는 EPSG:5186 미터 */
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const CRS5186 = L.extend({}, L.CRS.Simple, { transformation: new L.Transformation(1, -180000, -1, 570000) });
-// 애니메이션 끔: claude.ai 안(다른 출처 iframe)에서는 사용자가 누르기 전까지 브라우저가 화면 갱신(requestAnimationFrame)을
-// 멈춰 둘 수 있어, 서서히 나타나는 타일·확대 애니메이션에 의존하면 지도가 안 보인다.
-const SEOUL_VIEW = [[537000, 180500], [566500, 217500]];
-const map = L.map("map", { crs: CRS5186, minZoom: -7, maxZoom: 3, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 140,
-  attributionControl: false, doubleClickZoom: false, fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, inertia: false });
+const VWORLD_KEY = "B24C833D-0A15-4E87-BEA2-1A2EE3E3C46A";
+const TR = proj4("EPSG:5186", "EPSG:4326");
+const LL = (x, y) => { const q = TR.forward([x, y]); return L.latLng(q[1], q[0]); };   // 5186 → 위경도
+const XY = ll => TR.inverse([ll.lng, ll.lat]);                                         // 위경도 → 5186
+const SEOUL_VIEW = [[37.425, 126.76], [37.705, 127.185]];
+const map = L.map("map", { minZoom: 10, maxZoom: 20, zoomSnap: 0.5, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, doubleClickZoom: false });
+map.attributionControl.setPrefix(false);
 map.fitBounds(SEOUL_VIEW, { animate: false });
 setTimeout(() => { map.invalidateSize(false); }, 300);
+const vw = (layer, ext) => L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${ext}`,
+  { minZoom: 6, maxNativeZoom: 19, maxZoom: 20, attribution: "배경지도 © 국토교통부 브이월드" });
+const BASEMAPS = { base: [vw("Base", "png")], sat: [vw("Satellite", "jpeg"), vw("Hybrid", "png")] };
+let baseKind = "base"; BASEMAPS.base.forEach(t => t.addTo(map));
+function setBase(kind) {
+  if (kind === baseKind) return; BASEMAPS[baseKind].forEach(t => map.removeLayer(t)); BASEMAPS[kind].forEach(t => t.addTo(map).bringToBack());
+  baseKind = kind; document.querySelectorAll(".basebtn").forEach(b => b.classList.toggle("on", b.dataset.k === kind)); parcels.redraw();
+}
 L.control.scale({ imperial: false, maxWidth: 140, position: "bottomleft" }).addTo(map);
 const MapInfo = L.Control.extend({ options: { position: "topright" }, onAdd() {
   const d = L.DomUtil.create("div", "mapinfo"); L.DomEvent.disableClickPropagation(d);
-  d.innerHTML = `<button type="button" id="homeBtn">서울 전체</button><span id="mapLoad" hidden>필지 불러오는 중…</span><span id="zoomHint"></span>`;
+  d.innerHTML = `<div class="basesw"><button type="button" class="basebtn on" data-k="base">일반지도</button><button type="button" class="basebtn" data-k="sat">위성</button></div>
+    <button type="button" id="homeBtn">서울 전체</button><span id="mapLoad" hidden>필지 불러오는 중…</span><span id="zoomHint"></span>`;
   return d; } });
 new MapInfo().addTo(map);
-const LL = (x, y) => L.latLng(y, x);
-const PARCEL_Z = -1;          // 이 배율부터 필지선 표시
-function zoomHint() { const el = document.getElementById("zoomHint"); if (el) el.textContent = map.getZoom() < PARCEL_Z ? "더 확대하면 필지선이 보입니다" : ""; }
+const PARCEL_Z = 16;          // 이 배율부터 지적선 표시
+function zoomHint() { const el = document.getElementById("zoomHint"); if (el) el.textContent = map.getZoom() < PARCEL_Z ? "더 확대하면 지적선이 보입니다" : ""; }
 map.on("zoomend", zoomHint);
-setTimeout(() => { zoomHint(); document.getElementById("homeBtn").addEventListener("click", () => map.fitBounds(SEOUL_VIEW, { animate: false })); }, 0);
-let DONG = null;
-fetchBin("data/dong.dat").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); base.redraw(); }).catch(() => {});
+setTimeout(() => { zoomHint(); document.getElementById("homeBtn").addEventListener("click", () => map.fitBounds(SEOUL_VIEW));
+  document.querySelectorAll(".basebtn").forEach(b => b.addEventListener("click", () => setBase(b.dataset.k))); }, 0);
+let DONG = null;   // 법정동 경계·이름(찾기에서 동으로 이동할 때 사용)
+fetchBin("data/dong.dat").then(b => { DONG = JSON.parse(new TextDecoder().decode(b)); }).catch(() => {});
 
-const BaseLayer = L.GridLayer.extend({
+// 지적선 층: 타일 네 모서리를 5186으로 바꿔 '5186 → 타일 화소' 변환을 만든 뒤 필지 외곽선을 그림
+const ParcelLayer = L.GridLayer.extend({
   createTile(coords, done) {
     const tile = document.createElement("canvas"); const T = 256; tile.width = T; tile.height = T;
-    const s = Math.pow(2, coords.z), tx0 = coords.x * T / s + 180000, ty1 = 570000 - coords.y * T / s;
-    const tx1 = tx0 + T / s, ty0 = ty1 - T / s;
+    if (coords.z < PARCEL_Z || !META) { setTimeout(() => done(null, tile), 0); return tile; }
+    const nwP = coords.scaleBy(L.point(T, T));
+    const c0 = XY(map.unproject(nwP, coords.z)), c1 = XY(map.unproject(nwP.add([T, 0]), coords.z)),
+          c2 = XY(map.unproject(nwP.add([0, T]), coords.z)), c3 = XY(map.unproject(nwP.add([T, T]), coords.z));
+    const ux = c1[0] - c0[0], uy = c1[1] - c0[1], vx = c2[0] - c0[0], vy = c2[1] - c0[1], det = ux * vy - vx * uy;
+    const a = T * vy / det, b = -T * vx / det, c = -T * uy / det, e = T * ux / det;   // [px,py] = M·(x-x0, y-y0)
+    const P = (x, y) => { const dx = x - c0[0], dy = y - c0[1]; return [a * dx + b * dy, c * dx + e * dy]; };
+    const tx0 = Math.min(c0[0], c1[0], c2[0], c3[0]), tx1 = Math.max(c0[0], c1[0], c2[0], c3[0]);
+    const ty0 = Math.min(c0[1], c1[1], c2[1], c3[1]), ty1 = Math.max(c0[1], c1[1], c2[1], c3[1]);
     const ctx = tile.getContext("2d");
-    const P = (x, y) => [(x - tx0) * s, (ty1 - y) * s];
     const draw = async () => {
-      const ink = css("--ink"), line = css("--line"), muted = css("--muted");
-      if (coords.z >= PARCEL_Z && META) {
-        const ds = await Promise.all(cellsIn(tx0 - 5, ty0 - 5, tx1 + 5, ty1 + 5).map(c => loadCell(c.k)));
-        const X0 = tx0 * 10, X1 = tx1 * 10, Y0 = ty0 * 10, Y1 = ty1 * 10;
-        ctx.lineWidth = .6;
-        for (const d of ds) for (let i = 0; i < d.n; i++) {
-          if (d.bb[4*i+2] < X0 || d.bb[4*i] > X1 || d.bb[4*i+3] < Y0 || d.bb[4*i+1] > Y1) continue;
-          const r = ringOf(d, i); ctx.beginPath();
-          for (let k = 0; k < r.length; k += 2) { const p = P(r[k], r[k+1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
-          ctx.closePath();
-          const kd = d.kind[i];
-          if (kd) { ctx.fillStyle = kd === 1 ? "rgba(128,128,128,.28)" : kd === 2 ? "rgba(70,130,200,.28)" : "rgba(120,100,80,.25)"; ctx.fill(); }
-          ctx.strokeStyle = muted; ctx.globalAlpha = coords.z >= 1 ? .7 : .45; ctx.stroke(); ctx.globalAlpha = 1;
-        }
-      }
-      if (DONG) {
-        ctx.strokeStyle = ink; ctx.globalAlpha = coords.z >= PARCEL_Z ? .55 : .35; ctx.lineWidth = coords.z >= PARCEL_Z ? 1.4 : .8;
-        for (const d of DONG) for (const ring of d[3]) {
-          let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-          for (const q of ring) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
-          if (x1 < tx0 || x0 > tx1 || y1 < ty0 || y0 > ty1) continue;
-          ctx.beginPath(); ring.forEach((q, k) => { const p = P(q[0], q[1]); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        if (coords.z >= -2) {
-          ctx.font = `${coords.z >= PARCEL_Z ? 13 : 11}px ${css("--f-body")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.lineWidth = 3; ctx.strokeStyle = css("--bg"); ctx.fillStyle = ink;
-          const m = 80 / s;
-          for (const d of DONG) { if (!d[2]) continue; const [x, y] = d[2];
-            if (x < tx0 - m || x > tx1 + m || y < ty0 - m || y > ty1 + m) continue;
-            const p = P(x, y); ctx.strokeText(d[1], p[0], p[1]); ctx.fillText(d[1], p[0], p[1]); }
-        }
+      const ds = await Promise.all(cellsIn(tx0 - 5, ty0 - 5, tx1 + 5, ty1 + 5).map(cc => loadCell(cc.k)));
+      const X0 = tx0 * 10, X1 = tx1 * 10, Y0 = ty0 * 10, Y1 = ty1 * 10;
+      const sat = baseKind === "sat";
+      ctx.strokeStyle = sat ? "rgba(255,236,140,.9)" : "rgba(70,70,70,.55)"; ctx.lineWidth = coords.z >= 18 ? 1 : .7;
+      for (const d of ds) for (let i = 0; i < d.n; i++) {
+        if (d.bb[4*i+2] < X0 || d.bb[4*i] > X1 || d.bb[4*i+3] < Y0 || d.bb[4*i+1] > Y1) continue;
+        const r = ringOf(d, i); ctx.beginPath();
+        for (let k = 0; k < r.length; k += 2) { const q = P(r[k], r[k+1]); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
+        ctx.closePath(); ctx.stroke();
       }
     };
-    draw().then(() => done(null, tile)).catch(e => { console.error(e); done(null, tile); setTimeout(() => base.redraw(), 1500); });
+    draw().then(() => done(null, tile)).catch(err => { console.error(err); done(null, tile); setTimeout(() => parcels.redraw(), 1500); });
     return tile;
   }
 });
-// GridLayer 기본 minZoom은 0 → 서울 전체(마이너스 배율)에서도 그리도록 지도와 같은 범위로 지정
-const base = new BaseLayer({ tileSize: 256, updateWhenZooming: false, keepBuffer: 1, minZoom: -7, maxZoom: 3 }).addTo(map);
+const parcels = new ParcelLayer({ tileSize: 256, minZoom: 10, maxZoom: 20, zIndex: 5, updateWhenZooming: false }).addTo(map);
 const overlay = L.layerGroup().addTo(map);
 function drawOverlays() {
   overlay.clearLayers(); const col = css("--accent");
@@ -628,7 +624,7 @@ function drawOverlays() {
 function fitToLayers(ls) {
   const all = []; for (const L0 of ls) { try { all.push(...toSeoul(L0.polys, L0.crs)); } catch (e) {} }
   if (!all.length) return; const b = bboxOf(all);
-  map.fitBounds([LL(b[0], b[1]), LL(b[2], b[3])], { padding: [20, 20], maxZoom: 1, animate: false });
+  map.fitBounds([LL(b[0], b[1]), LL(b[2], b[3])], { padding: [20, 20], maxZoom: 17, animate: false });
 }
 
 /* 그리기: 점을 찍는 동안 마우스를 따라 경계와 면적이 실시간으로 바뀜(네이버 지도 면적재기처럼) */
@@ -673,10 +669,10 @@ $("#drawBtn").addEventListener("click", () => setDrawing(true));
 $("#cancelBtn").addEventListener("click", () => setDrawing(false));
 $("#undoBtn").addEventListener("click", () => { drawing.pts.pop(); drawRefresh(); });
 $("#doneBtn").addEventListener("click", finishDrawing);
-map.on("click", e => { if (!drawing) return; const p = [e.latlng.lng, e.latlng.lat];
+map.on("click", e => { if (!drawing) return; const p = XY(e.latlng);
   if (drawing.pts.length >= 3 && map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(LL(...drawing.pts[0]))) < 10) { finishDrawing(); return; } // 첫 점을 누르면 마침
   if (!same(p, drawing.pts[drawing.pts.length - 1])) drawing.pts.push(p); drawRefresh(); });
-map.on("mousemove", e => { if (!drawing || !drawing.pts.length) return; drawing.cur = [e.latlng.lng, e.latlng.lat]; drawRefresh(); });
+map.on("mousemove", e => { if (!drawing || !drawing.pts.length) return; drawing.cur = XY(e.latlng); drawRefresh(); });
 map.on("mouseout", () => { if (!drawing) return; drawing.cur = null; drawRefresh(); });
 map.on("dblclick", e => { if (!drawing) return; L.DomEvent.stop(e); finishDrawing(); });
 map.on("contextmenu", e => { if (!drawing) return; if (e.originalEvent) e.originalEvent.preventDefault(); drawing.cur = null; finishDrawing(); });
@@ -704,15 +700,15 @@ async function goTo(bi, m) {
   $("#hits").innerHTML = "";
   const b = META.bjd[bi]; const keys = META.bjd_cells[String(bi)] || [];
   const dong = DONG && DONG.find(d => d[0] === bi);
-  if (!m || !m[3] || !keys.length) { if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false }); return; }
+  if (!m || !m[3] || !keys.length) { if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), 15, { animate: false }); return; }
   const bun = +m[3], ji = m[4] ? +m[4] : 0, san = m[2] ? 1 : 0;
   for (const d of await Promise.all(keys.map(loadCell))) for (let i = 0; i < d.n; i++) if (d.bjd[i] === bi && d.bun[i] === bun && d.ji[i] === ji && d.san[i] === san) {
-    map.setView(LL(d.x[i] / 10, d.y[i] / 10), 1.5, { animate: false });
+    map.setView(LL(d.x[i] / 10, d.y[i] / 10), 18, { animate: false });
     const r = ringOf(d, i); const ll = []; for (let k = 0; k < r.length; k += 2) ll.push(LL(r[k], r[k+1]));
     const hl = L.polygon(ll, { color: css("--warn"), weight: 3, fill: false, interactive: false }).addTo(map); setTimeout(() => map.removeLayer(hl), 6000);
     setRun(`${b[1]} ${san ? "산" : ""}${bun}${ji ? "-" + ji : ""}로 이동했습니다.`); return;
   }
-  if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), -2, { animate: false });
+  if (dong && dong[2]) map.setView(LL(dong[2][0], dong[2][1]), 15, { animate: false });
   setRun(`${b[1]}에서 ${m[3]}${m[4] ? "-" + m[4] : ""} 필지를 찾지 못해 동으로 이동했습니다.`, "warn");
 }
 $("#qBtn").addEventListener("click", findParcel);
