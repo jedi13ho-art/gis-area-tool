@@ -89,10 +89,13 @@ input::placeholder{color:var(--faint)}
 
 /* 개별 폴리곤 정보 카드(마우스를 올렸을 때만). 주황은 쓰지 않음 */
 .pcard{position:absolute;z-index:820;pointer-events:none;width:244px;box-sizing:border-box;background:#FFFFFF;color:var(--ink);border:1px solid var(--line);border-radius:var(--r-ctl);box-shadow:0 4px 14px rgba(22,50,74,.12);padding:11px 13px 12px;font-family:var(--f-body)}
-.pcard .ph{display:flex;align-items:baseline;gap:6px;font-size:13px;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:9px;white-space:nowrap;overflow:hidden}
-.pcard .ph i{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
-.pcard .ph b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
-.pcard .ph span{color:var(--muted);flex:none}
+.pcard .ph{display:flex;align-items:flex-start;gap:7px;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:9px}
+.pcard .ph i{width:9px;height:9px;border-radius:50%;flex:none;margin-top:6px}
+.pcard .pt{min-width:0;flex:1}
+.pcard .pt>b{display:block;font-size:14.5px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .ps{display:flex;font-size:11.5px;line-height:1.35;white-space:nowrap;min-width:0}
+.pcard .ps .pf{color:var(--muted);overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pcard .ps .pn{color:var(--faint);flex:none}
 .pcard small{display:block;font-size:11px;color:var(--muted);font-weight:400;line-height:1.3}
 .pcard b small{display:inline;font-size:11.5px;color:var(--ink);font-weight:500;margin-left:1px}
 .pcard .pa{margin-bottom:9px}
@@ -389,10 +392,10 @@ function ringsToPolys(rings){ // SHP: 바깥 고리는 시계방향(면적<0), �
 }
 
 /* ---------- SHP 읽기 */
-function parseShp(buf){
-  const dv = new DataView(buf); const polys=[]; let off=100;
+function parseShp(buf, feat){   // feat(선택): 폴리곤마다 레코드 순번(= .dbf 행)을 채움
+  const dv = new DataView(buf); const polys=[]; let off=100, rec=-1;
   while(off+8 <= buf.byteLength){
-    const len = dv.getInt32(off+4,false)*2; const c = off+8; off = c+len;
+    const len = dv.getInt32(off+4,false)*2; const c = off+8; off = c+len; rec++;
     if(len<4) continue; const t = dv.getInt32(c,true);
     if(![5,15,25].includes(t)) continue;
     const np = dv.getInt32(c+36,true), npt = dv.getInt32(c+40,true);
@@ -400,9 +403,70 @@ function parseShp(buf){
     const p0 = c+44+4*np; const rings=[];
     for(let i=0;i<np;i++){ const s=parts[i], e=i+1<np?parts[i+1]:npt; const r=[];
       for(let k=s;k<e;k++) r.push([dv.getFloat64(p0+16*k,true), dv.getFloat64(p0+16*k+8,true)]); rings.push(r); }
-    polys.push(...ringsToPolys(rings));
+    const ps = ringsToPolys(rings); polys.push(...ps); if(feat) for(let k=0;k<ps.length;k++) feat.push(rec);
   }
   return polys;
+}
+/* ---------- 개별 폴리곤 명칭(정보 카드 제목 표시용만. 집계·결과표·엑셀·ID에는 쓰지 않음) */
+// .dbf: 인코딩은 .cpg 표기를 먼저 보되(ISO-8859-1 표기는 흔한 오표기라 무시), 실제 바이트가 UTF-8로 맞는지 → EUC-KR(CP949) 순으로 판별
+function dbfDecoder(cpg, sample){
+  const c = String(cpg||"").toLowerCase(); const tries = [];
+  if(/utf-?8/.test(c)) tries.push("utf-8"); if(/949|euc-?kr|ks_c_5601|korean/.test(c)) tries.push("euc-kr");
+  tries.push("utf-8", "euc-kr");
+  for(const enc of tries){
+    try { const t = new TextDecoder(enc, { fatal: true }).decode(sample); if(!t.includes("\uFFFD")) return new TextDecoder(enc); } catch(e){}
+  }
+  return null;   // 어느 쪽으로도 맞지 않으면 문자 필드를 명칭으로 쓰지 않음
+}
+function parseDbf(buf, cpg){
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  if(u8.length < 32) return null;
+  const n = dv.getUint32(4,true), hlen = dv.getUint16(8,true), rlen = dv.getUint16(10,true);
+  const fdef = []; for(let o=32; o+32<=hlen && u8[o]!==0x0D; o+=32){ let e=o; while(e<o+11 && u8[e]) e++; fdef.push({ raw: u8.slice(o,e), type: String.fromCharCode(u8[o+11]), len: u8[o+16] }); }
+  const raw = []; let total = 0;
+  for(let i=0;i<n;i++){ const b = hlen + i*rlen; if(b + rlen > u8.length) break; let q = b+1; const row = [];
+    for(const f of fdef){ row.push(u8.subarray(q, q+f.len)); q += f.len; } raw.push(row); }
+  const parts = []; for(const row of raw)   // 인코딩 판별은 문자 값으로만(10바이트에서 잘린 한글 필드명은 깨져 있을 수 있음)
+    fdef.forEach((f,j)=>{ if(f.type==="C") parts.push(row[j]); });
+  for(const x of parts) total += x.length; const sample = new Uint8Array(total); let o=0; for(const x of parts){ sample.set(x,o); o += x.length; }
+  const dec = dbfDecoder(cpg, sample);
+  const txt = b => dec ? dec.decode(b).replace(/[\u0000\s]+$/,"").trim() : null;
+  const fields = fdef.map(f => ({ name: dec ? txt(f.raw) : new TextDecoder("latin1").decode(f.raw).trim(), text: f.type === "C" && !!dec }));
+  const rows = raw.map(row => row.map((b,j) => fields[j].text ? txt(b) : null));
+  return { fields, rows };
+}
+const NAME_PRI = ["명칭","구역명","사업명","대상지명","지구명","지역명","name","title"];
+const normF = f => String(f).toLowerCase().replace(/[\s_\-.]/g, "");
+const BAD_FIELD = /면적|area|연면적|objectid|일련번호|번호|코드|code|^(fid|oid|id|gid|sn|no)$|id$|^id|좌표|coord|date|날짜|일자|len|길이|shape/;
+function okName(v){   // 명칭으로 보일 만한 값인지
+  if(v == null) return false; v = String(v).trim();
+  if(!v || v.length > 40) return false;
+  if(/^[\d\s.,+\-()\/:%~]+$/.test(v)) return false;                         // 숫자·좌표·날짜만
+  if(/^\d{2,4}[-.\/년]\s?\d{1,2}/.test(v)) return false;                      // 날짜 모양
+  if(/[\uFFFD\u0000-\u001F\u007F]/.test(v)) return false;                       // 깨진 글자
+  if(/[\u0080-\u00FF]/.test(v) && !/[가-힣]/.test(v)) return false;            // 라틴 문자로 깨진 한글
+  if(/[^\u0020-\u007E\u00A0-\u00FF\u1100-\u11FF\u2000-\u206F\u2150-\u218F\u2460-\u24FF\u3000-\u303F\u3130-\u318F\u4E00-\u9FFF\uAC00-\uD7A3\uFF00-\uFFEF]/.test(v)) return false;
+  return true;
+}
+// 명칭 필드 하나 고르기: 명시 필드명 순위 → 명칭·이름·name·title이 든 필드. 문자형이고 값이 명칭다우며 폴리곤별로 구분되는 필드만
+function pickNames(fields, rows){
+  if(!fields || !rows || !rows.length) return null;
+  const cands = [];
+  fields.forEach((f, j) => {
+    if(!f.text) return; const k = normF(f.name); if(!k || BAD_FIELD.test(k)) return;
+    let rank = NAME_PRI.findIndex(x => normF(x) === k);
+    if(rank < 0) rank = /명칭|이름|name|title/.test(k) ? 50 : -1;   // '~명'으로만 끝나는 필드(지목명·재산명 등)는 명칭으로 보지 않음
+    if(rank < 0) return;
+    const vals = rows.map(r => r[j] == null ? "" : String(r[j]).trim()), filled = vals.filter(Boolean), good = filled.filter(okName);
+    if(filled.length < rows.length * .5 || good.length < filled.length * .8) return;
+    const distinct = new Set(good).size;
+    if(rows.length > 1 && distinct < 2) return;                               // 모두 같은 값이면 구분에 도움 안 됨
+    cands.push({ j, rank, ratio: distinct / good.length });
+  });
+  if(!cands.length) return null;
+  cands.sort((a, b) => a.rank - b.rank || b.ratio - a.ratio);
+  const j = cands[0].j;
+  return rows.map(r => okName(r[j]) ? String(r[j]).trim() : null);
 }
 /* ---------- WKB / GPKG 읽기 */
 function parseWKB(dv, off){
@@ -431,11 +495,15 @@ async function readGpkg(name, buf){
   const S = await getSQL(); const db = new S.Database(new Uint8Array(buf)); const out=[];
   const q = db.exec("select g.table_name, g.column_name, g.srs_id, s.organization, s.organization_coordsys_id, s.definition from gpkg_geometry_columns g left join gpkg_spatial_ref_sys s on s.srs_id=g.srs_id");
   for(const row of (q[0]?q[0].values:[])){
-    const [tbl,col,srs,org,code,def]=row; const polys=[];
-    const r = db.exec(`select "${col}" from "${tbl}"`);
-    for(const v of (r[0]?r[0].values:[])) if(v[0]) polys.push(...gpkgGeom(v[0]));
+    const [tbl,col,srs,org,code,def]=row; const polys=[], feat=[];
+    const cols = (db.exec(`pragma table_info("${tbl}")`)[0]||{values:[]}).values.map(c=>({ name: c[1], type: String(c[2]||"").toUpperCase() })).filter(c=>c.name!==col);
+    const r = db.exec(`select "${col}"${cols.map(c=>`, "${c.name}"`).join("")} from "${tbl}"`);
+    const vals = r[0]?r[0].values:[];
+    vals.forEach((v, i) => { if(v[0]) { const ps = gpkgGeom(v[0]); polys.push(...ps); for(let k=0;k<ps.length;k++) feat.push(i); } });
+    const fields = cols.map((c, j) => ({ name: c.name, text: /TEXT|CHAR|CLOB|^$/.test(c.type) && vals.some(v => typeof v[j+1] === "string") }));
+    const names = pickNames(fields, vals.map(v => v.slice(1).map(x => typeof x === "string" ? x : null)));
     const epsg = (String(org||"").toUpperCase()==="EPSG" && DEFS["EPSG:"+code]) ? "EPSG:"+code : null;
-    out.push({file:name, layer:tbl, polys, wkt: epsg?null:def, epsg});
+    out.push({file:name, layer:tbl, polys, wkt: epsg?null:def, epsg, pnames: names ? feat.map(i => names[i]) : null});
   }
   db.close(); return out;
 }
@@ -489,14 +557,17 @@ async function addFiles(files){
       const ext=f.name.split(".").pop().toLowerCase();
       if(ext==="zip"){ const z=await JSZip.loadAsync(await f.arrayBuffer());
         for(const zn of Object.keys(z.files)){ const zf=z.files[zn]; if(zf.dir) continue; const e2=zn.split(".").pop().toLowerCase();
-          if(["shp","prj","gpkg"].includes(e2)) entries.push({name:zn.split("/").pop(), ext:e2, data: e2==="prj"? await zf.async("string") : await zf.async("arraybuffer")}); } }
-      else if(["shp","prj","gpkg"].includes(ext)) entries.push({name:f.name, ext, data: ext==="prj"? await f.text() : await f.arrayBuffer()});
+          if(["shp","prj","gpkg","dbf","cpg"].includes(e2)) entries.push({name:zn.split("/").pop(), ext:e2, data: ["prj","cpg"].includes(e2)? await zf.async("string") : await zf.async("arraybuffer")}); } }
+      else if(["shp","prj","gpkg","dbf","cpg"].includes(ext)) entries.push({name:f.name, ext, data: ["prj","cpg"].includes(ext)? await f.text() : await f.arrayBuffer()});
     }
     const base = n => n.replace(/\.[^.]+$/,"");
-    const prjs = new Map(entries.filter(e=>e.ext==="prj").map(e=>[base(e.name).toLowerCase(), e.data]));
+    const side = ext => new Map(entries.filter(e=>e.ext===ext).map(e=>[base(e.name).toLowerCase(), e.data]));
+    const prjs = side("prj"), dbfs = side("dbf"), cpgs = side("cpg");
     const found=[];
     for(const e of entries){
-      if(e.ext==="shp") found.push({file:e.name, layer:null, polys:parseShp(e.data), wkt:prjs.get(base(e.name).toLowerCase())||null, epsg:null});
+      if(e.ext==="shp"){ const bk = base(e.name).toLowerCase(), feat = [], polys = parseShp(e.data, feat);
+        let names = null; try { const db = dbfs.get(bk) && parseDbf(dbfs.get(bk), cpgs.get(bk)); names = db && pickNames(db.fields, db.rows); } catch(err) { names = null; }   // 속성을 못 읽어도 도형은 그대로
+        found.push({file:e.name, layer:null, polys, wkt:prjs.get(bk)||null, epsg:null, pnames: names ? feat.map(i => names[i] || null) : null}); }
       if(e.ext==="gpkg") found.push(...await readGpkg(e.name, e.data));
     }
     if(!found.length){ setRun("SHP나 GPKG 파일을 찾지 못했습니다. .shp 파일(또는 압축한 .zip, .gpkg)을 넣어주세요.","err"); return; }
@@ -505,7 +576,7 @@ async function addFiles(files){
       if(!crs && L.wkt){ crs=crsFromWkt(L.wkt); note=crs?"파일에 적힌 좌표계":null; }
       if(!crs){ const g=crsGuess(L.polys); crs=g[0]; note=(L.wkt?"좌표계 정보를 못 읽어 ":"좌표계 파일(.prj)이 없어 ")+g[1]; }
       const nm = base(L.layer && found.filter(x=>x.file===L.file).length>1 ? L.layer : L.file);
-      layers.push({id:++seq, file:L.file+(L.layer&&L.layer!==base(L.file)?` › ${L.layer}`:""), name:nm, polys:L.polys, crs, note});
+      layers.push({id:++seq, file:L.file+(L.layer&&L.layer!==base(L.file)?` › ${L.layer}`:""), name:nm, polys:L.polys, crs, note, pnames:L.pnames||null});
     }
     renderLayers(); fitToLayers(layers.slice(-found.length)); scheduleRun();
   }catch(err){ console.error(err); setRun("파일을 읽다가 문제가 생겼습니다: "+(err.message||err),"err"); }
@@ -897,15 +968,15 @@ function drawOverlays() {
   for (const L0 of layers) {
     if (!L0.crs) continue;
     if (!L0._ll) { try { L0._xy = toSeoul(L0.polys, L0.crs); L0._ll = L0._xy.map(p => p.map(r => r.map(q => LL(q[0], q[1])))); } catch (e) { continue; } }
-    const k = groupKey(L0); let g = groups.get(k); if (!g) groups.set(k, g = { xy: [], ll: [], ids: [] });
-    g.xy.push(...L0._xy); g.ll.push(...L0._ll); g.ids.push(...L0._xy.map((_, i) => `${L0.id}-${i}`));
+    const k = groupKey(L0); let g = groups.get(k); if (!g) groups.set(k, g = { xy: [], ll: [], ids: [], pn: [] });
+    g.xy.push(...L0._xy); g.ll.push(...L0._ll); g.ids.push(...L0._xy.map((_, i) => `${L0.id}-${i}`)); g.pn.push(...L0._xy.map((_, i) => (L0.pnames && L0.pnames[i]) || null));
   }
   for (const [k, g] of groups) {
     const color = colorOf(k);
     if (hiddenKeys.has(k) || !g.xy.length) continue;
     L.polygon(g.ll, { color: "#FFFFFF", weight: 6, opacity: .9, fill: false, interactive: false }).addTo(overlay);   // 흰 테두리(용도지역·위성 위에서도 경계가 묻히지 않게)
     const shapes = g.ll.map(ll => L.polygon(ll, { color, fillColor: color, weight: 2.75 }).addTo(overlay));
-    shapes.forEach((sh, j) => { sh._pid = g.ids[j]; sh._pno = j + 1; sh._pname = k; sh._pcolor = color; sh._parea = polyArea(g.xy[j]); });
+    shapes.forEach((sh, j) => { sh._pid = g.ids[j]; sh._pno = j + 1; sh._pname = k; sh._ptitle = g.pn[j]; sh._pcolor = color; sh._parea = polyArea(g.xy[j]); });
     for (const sh of shapes) {
       sh.on("mouseover", e => { if (drawing) return; hoverKey = k; hoverShape = sh; styleZones(); placeLabels(); showPcard(sh, e.containerPoint); });
       sh.on("mousemove", e => { if (hoverShape === sh) movePcard(e.containerPoint); });
@@ -936,7 +1007,10 @@ function showPcard(sh, cp) {
   if (!canHover() || drawing) return;
   const st = results && results.pstat && results.pstat.get(sh._pid);
   const v = (x, unit) => st ? `${fmt(x)}<small>${unit}</small>` : `<span class="wait">집계 중…</span>`;
-  pcard.innerHTML = `<div class="ph"><i style="background:${sh._pcolor}"></i><b>${esc(sh._pname)}</b><span>· 폴리곤 ${String(sh._pno).padStart(2, "0")}</span></div>
+  // 제목: 개별 명칭이 있으면 그것, 없으면 구역(파일·레이어) 이름. 보조: 구역 이름(제목과 같으면 생략) · 폴리곤 번호
+  const no = `폴리곤 ${String(sh._pno).padStart(2, "0")}`, title = sh._ptitle || sh._pname;
+  const sub = (sh._ptitle && sh._ptitle !== sh._pname ? `<span class="pf">${esc(sh._pname)}</span><span class="pn"> · ${no}</span>` : `<span class="pn">${no}</span>`);
+  pcard.innerHTML = `<div class="ph"><i style="background:${sh._pcolor}"></i><div class="pt"><b title="${esc(title)}">${esc(title)}</b><div class="ps">${sub}</div></div></div>
     <div class="pa"><small>폴리곤 면적</small><b>${fmt(sh._parea)}<small>㎡</small></b></div>
     <div class="pg"><div><small>필지 수</small><b>${v(st && st.n, "필지")}</b></div><div><small>세대수</small><b>${v(st && st.units, "세대")}</b></div>
     <div><small>주거연면적</small><b>${v(st && st.res, "㎡")}</b></div><div><small>비주거연면적</small><b>${v(st && st.non, "㎡")}</b></div></div>`;
