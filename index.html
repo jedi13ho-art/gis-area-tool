@@ -42,7 +42,9 @@ section.step{background:var(--panel);border:1px solid var(--line);border-radius:
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{background:var(--accent-soft);font-weight:600;font-size:12.5px}
-td.num,th.num{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.num{font-size:14px;font-weight:500;letter-spacing:.01em}
+#resultTable td:first-child,#popTable td:first-child{font-weight:600}
 tr:last-child td{border-bottom:none}
 th.zone-group{text-align:center;border-left:2px solid var(--accent)}
 td.gs,th.gs{border-left:2px solid var(--accent);font-weight:600}
@@ -141,14 +143,14 @@ details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 
 
   <section class="step" aria-labelledby="s3">
-    <h2 id="s3"><span class="no">2</span>결과</h2>
+    <h2 id="s3"><span class="no">2</span>현황 집계 결과</h2>
     <div class="row" id="resultHead"><span class="sample-badge" id="sampleBadge">예시 화면 — 구역을 그리거나 파일을 넣으면 바로 계산됩니다</span></div>
     <div class="tablebox"><table id="resultTable"></table></div>
     <div class="popbox" id="popBox" hidden>
       <div class="pophead">참고 · 추정 인구 <span class="hint">구역에 통째로 들어온 집계구는 2024년 실측 인구, 나머지는 세대수 × 집계구 평균가구원수</span></div>
       <div class="tablebox"><table id="popTable"></table></div>
     </div>
-    <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><span id="dlStatus" class="hint"></span></div>
+    <div class="row"><button class="btn" id="xlsxBtn" disabled>엑셀로 받기</button><button class="btn ghost" id="step2Btn" disabled title="다음 단계에서 제공할 예정입니다">공공기여 계산 · 준비 중</button><span id="dlStatus" class="hint"></span></div>
     <details>
       <summary>계산 기준</summary>
       <ul id="basis"></ul>
@@ -409,17 +411,17 @@ function scheduleRun(){ clearTimeout(runTimer); runTimer=setTimeout(async()=>{
 const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function setRun(msg, kind){ const el=$("#runStatus"); el.textContent=msg; el.className = kind? "status "+(kind==="err"?"err":"warn") : "hint"; }
 
-/* ---------- 계산 */
-async function run(){
-  if(!layers.length){ results=null; renderResults(); setRun(""); return; }
-  if(!META){ setRun("자료를 불러오는 중입니다. 잠시 뒤 자동으로 계산합니다.","warn"); setTimeout(scheduleRun, 1500); return; }
-  try{
+/* ==================== STEP 1 · 현황 집계 (GIS) ====================
+   입력: 구역 레이어 목록 → 출력: { rows, warns, oaYear }
+   rows[i] = { name, files, total(구역면적), n(필지수), area(필지면적), res, non, units, zone{용도지역:면적}, plist(필지목록), pop(참고 인구) }
+   STEP 2(공공기여 등)는 이 결과(rows)를 입력으로만 받고, 여기 집계 로직은 건드리지 않는다. */
+async function computeStep1(zoneLayers, onProgress = () => {}) {
     const groups=new Map();
-    const warns=[]; for(const L of layers.filter(L=>!L.crs)) warns.push(`'${L.file}'의 좌표계를 알 수 없어 뺐습니다(.prj 파일을 같이 넣어주세요).`);
-    for(const L of layers.filter(L=>L.crs)){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
+    const warns=[]; for(const L of zoneLayers.filter(L=>!L.crs)) warns.push(`'${L.file}'의 좌표계를 알 수 없어 뺐습니다(.prj 파일을 같이 넣어주세요).`);
+    for(const L of zoneLayers.filter(L=>L.crs)){ const k=(L.name||L.file).trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(L); }
     const out=[]; let gi=0;
     for(const [name, Ls] of groups){
-      gi++; setRun(`계산 중… (${gi}/${groups.size}) ${name}`); await new Promise(r=>setTimeout(r,20));
+      gi++; onProgress(`계산 중… (${gi}/${groups.size}) ${name}`); await new Promise(r=>setTimeout(r,20));
       let polys=[]; for(const L of Ls) polys.push(...toSeoul(L.polys, L.crs));
       polys = polys.filter(p=>p[0]&&p[0].length>=4);
       const bb=bboxOf(polys);
@@ -464,12 +466,28 @@ async function run(){
       pop.total = pop.measured + pop.est;
       out.push({name, files:Ls.map(L=>L.file), total, ...acc, plist, pop});
     }
-    results={rows:out, warns, oaYear:(await loadOA()).year};
+    return { rows: out, warns, oaYear: (await loadOA()).year };
+}
+
+/* ---------- 화면: 구역이 바뀌면 STEP 1을 다시 계산해 표시 */
+async function run(){
+  if(!layers.length){ results=null; renderResults(); setRun(""); return; }
+  if(!META){ setRun("자료를 불러오는 중입니다. 잠시 뒤 자동으로 계산합니다.","warn"); setTimeout(scheduleRun, 1500); return; }
+  try{
+    results = await computeStep1(layers, msg => setRun(msg));
     renderResults();
-    setRun(`계산 완료: 구역 ${out.length}개, 필지 ${fmt(out.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
-    if(warns.length) setRun(warns.join(" / "),"warn");
+    setRun(`계산 완료: 구역 ${results.rows.length}개, 필지 ${fmt(results.rows.reduce((s,r)=>s+r.n,0))}개. 아래 결과에서 엑셀로 받을 수 있습니다.`);
+    if(results.warns.length) setRun(results.warns.join(" / "),"warn");
   }catch(err){ console.error(err); setRun("계산하다가 문제가 생겼습니다: "+(err.message||err),"err"); }
 }
+
+/* ==================== STEP 2 · 공공기여 계산 (준비 중) ====================
+   아직 구현하지 않음. 사업유형별 모듈이 생기면 아래 계약대로 채운다.
+   - compute(step1) → { rows:[{ name, 공공기여량…, 산정식, 산정근거 }], basis:[…] }  (STEP 1 rows만 입력으로 사용)
+   - sheets(ctx) → [{ name, ws }]  엑셀에 붙일 시트 (근거가 확정된 값만)
+   ready=false인 동안 화면 버튼은 '준비 중'으로 비활성, 엑셀에는 시트를 만들지 않는다. */
+const STEP2 = { ready: false, label: "공공기여 계산", compute: null, sheets: () => [] };
+
 const round1 = v => Math.round(v*10)/10;
 
 /* ---------- 결과 표 */
@@ -502,9 +520,9 @@ function renderResults(){
     <td class="num">${r.pop.total ? fmt(100*r.pop.measured/r.pop.total) + "%" : "-"}</td></tr>`).join("")}</tbody>`;
 }
 
-/* ---------- 엑셀 */
-function buildWorkbook(){
-  const rows=results.rows, zc=zoneCols(rows);
+/* ---------- 엑셀: 시트 빌더를 순서대로 붙임. STEP 2가 준비되면 STEP2.sheets(ctx)가 '기준' 앞에 들어감 */
+const sheetStep1Summary = ctx => {
+  const rows=ctx.step1.rows, zc=zoneCols(rows);
   const head1=["명칭","총 면적(㎡)","필지수","필지면적(㎡)","주거 세대수","주거연면적(㎡)","비주거연면적(㎡)","용도지역별 면적(㎡)",...Array(zc.length-1).fill(null)];
   const head2=[null,null,null,null,null,null,null,...zc];
   const body=rows.map(r=>[r.name, Math.round(r.total), r.n, Math.round(r.area), r.units, Math.round(r.res), Math.round(r.non), ...zc.map(z=>Math.round(r.zone[z]||0))]);
@@ -512,23 +530,40 @@ function buildWorkbook(){
   ws["!merges"]=[0,1,2,3,4,5,6].map(c=>({s:{r:0,c},e:{r:1,c}})).concat(zc.length>1?[{s:{r:0,c:7},e:{r:0,c:6+zc.length}}]:[]);
   ws["!cols"]=[{wch:18},{wch:14},{wch:9},{wch:14},{wch:11},{wch:15},{wch:15},...zc.map(()=>({wch:16}))];
   for(let r=2;r<2+body.length;r++) for(let c=1;c<head1.length;c++){ const a=XLSX.utils.encode_cell({r,c}); if(ws[a]) ws[a].z="#,##0"; }
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "집계");
+  return { name: "집계", ws };
+};
+const sheetStep1Parcels = ctx => {
+  const rows=ctx.step1.rows;
   const pl=[["분류","PNU","주소","필지면적(㎡)","용도지역","주거연면적(㎡)","비주거연면적(㎡)","주거 세대수"]];
   rows.forEach(r=>pl.push(...r.plist));
   const ws2=XLSX.utils.aoa_to_sheet(pl); ws2["!cols"]=[{wch:14},{wch:21},{wch:32},{wch:12},{wch:18},{wch:14},{wch:14},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, ws2, "필지목록");
+  return { name: "필지목록", ws: ws2 };
+};
+const sheetStep1Population = ctx => {
+  const rows=ctx.step1.rows;
   const pp=[["명칭","추정 인구(명)","실측분(집계구 통째 포함)","추정분(세대수×평균가구원수)","실측 비율(%)","통째로 포함된 집계구 수","일부만 걸친 집계구 수"],
     ...rows.map(r=>[r.name, Math.round(r.pop.total), r.pop.measured, Math.round(r.pop.est), r.pop.total? Math.round(1000*r.pop.measured/r.pop.total)/10 : null, r.pop.nFull, r.pop.nPart]),
     [], ["참고용 추정치입니다."],
-    [`- 실측분: 구역 안에 필지면적의 ${OA_FULL*100}% 이상이 들어온 집계구의 ${results.oaYear}년 총인구(통계청 SGIS, 집계구 경계 2025-06-30)`],
+    [`- 실측분: 구역 안에 필지면적의 ${OA_FULL*100}% 이상이 들어온 집계구의 ${ctx.step1.oaYear}년 총인구(통계청 SGIS, 집계구 경계 2025-06-30)`],
     ["- 추정분: 나머지 필지의 주거 세대수 × 그 필지가 속한 집계구의 평균가구원수(2024)"],
     ["- 세대수는 건축물대장 기준(2026년 8월), 실측 인구는 2024년 기준이라 시점이 다릅니다. 그 사이 새로 지은 건물은 실측분에 빠질 수 있습니다."]];
   const ws4=XLSX.utils.aoa_to_sheet(pp); ws4["!cols"]=[{wch:18},{wch:14},{wch:22},{wch:26},{wch:12},{wch:20},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, ws4, "인구(참고)");
+  return { name: "인구(참고)", ws: ws4 };
+};
+const sheetBasis = ctx => {
+  const rows=ctx.step1.rows;
   const bs=[["계산 기준"],[`자료: ${META.version}`],[`계산일: ${new Date().toLocaleDateString("ko-KR")}`],...BASIS.map(b=>["- "+b]),
-    ...rows.map(r=>[`- '${r.name}' 구역 파일: ${r.files.join(", ")}`]), ...results.warns.map(w=>["! "+w])];
-  const ws3=XLSX.utils.aoa_to_sheet(bs); ws3["!cols"]=[{wch:130}]; XLSX.utils.book_append_sheet(wb, ws3, "기준");
-  return XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    ...rows.map(r=>[`- '${r.name}' 구역 파일: ${r.files.join(", ")}`]), ...ctx.step1.warns.map(w=>["! "+w])];
+  const ws3=XLSX.utils.aoa_to_sheet(bs); ws3["!cols"]=[{wch:130}];
+  return { name: "기준", ws: ws3 };
+};
+function buildWorkbook(){
+  const ctx = { step1: results, step2: null };   // step2: STEP2.compute(results) 결과가 들어갈 자리
+  const sheets = [sheetStep1Summary(ctx), sheetStep1Parcels(ctx), sheetStep1Population(ctx),
+                  ...(STEP2.ready ? STEP2.sheets(ctx) : []), sheetBasis(ctx)].filter(Boolean);
+  const wb = XLSX.utils.book_new();
+  for (const sh of sheets) XLSX.utils.book_append_sheet(wb, sh.ws, sh.name);
+  return XLSX.write(wb, { bookType: "xlsx", type: "array" });
 }
 let downloads=null;
 (async()=>{ try{ downloads = window.claude && window.claude.use ? await window.claude.use("downloads") : null; }catch(e){ downloads=null; } })();
