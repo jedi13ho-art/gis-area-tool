@@ -40,7 +40,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
   background-image:linear-gradient(var(--panel),var(--panel)),linear-gradient(var(--panel),var(--panel));
   background-size:14px 2px,2px 14px;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 7px var(--accent)}
 .brand h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.15;color:var(--ink)}
-.brand .slogan{font-size:16px;font-weight:600;color:var(--ink)}
 .brand .desc{font-size:13.5px;color:var(--muted)}
 
 section.step{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -223,6 +222,10 @@ tbody tr:hover td{background:#F3FBFE}
 details.basis{font-size:13px;color:var(--muted)}
 details.basis summary{cursor:pointer;color:var(--muted);font-weight:500}
 details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:96ch}
+details.basis summary .sumhint{color:var(--faint);font-weight:400}
+.unitsbox{margin-top:10px;padding:11px 14px;border:1px solid var(--accent-line);border-left:3px solid var(--accent);border-radius:var(--r-ctl);background:var(--accent-soft);color:var(--ink);max-width:96ch}
+.unitsbox>b{display:block;font-size:13.5px;font-weight:700;line-height:1.5}
+.unitsbox ul{margin:6px 0 0;color:var(--ink)}
 .legend{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r-chip);padding:3px 8px;font-size:11px;line-height:1.4;color:var(--ink);display:flex;align-items:center;gap:6px}
 .legend i{width:12px;height:10px;border-radius:2px;border:1.5px solid var(--gs);background:var(--gs-fill);flex:none}
 [hidden]{display:none!important}
@@ -233,7 +236,7 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
 
 <div class="wrap">
   <header class="brand">
-    <div class="brand-row"><span class="mark" aria-hidden="true"></span><h1>세대수계산기</h1><span class="slogan">구역 현황</span><span class="desc">토지·건축물 현황 자동 집계</span></div>
+    <div class="brand-row"><span class="mark" aria-hidden="true"></span><h1>세대수계산기</h1><span class="desc">토지·건축물 현황 자동 집계</span></div>
   </header>
 
   <section class="step" aria-labelledby="s1">
@@ -278,7 +281,8 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
       <span id="dlStatus" class="okmsg" hidden></span>
     </div>
     <details class="basis">
-      <summary>계산 기준</summary>
+      <summary>계산 기준 <span class="sumhint">· 세대수 세는 법</span></summary>
+      <div class="unitsbox" id="unitsBasis"></div>
       <ul id="basis"></ul>
     </details>
   </section>
@@ -291,13 +295,23 @@ details.basis ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:co
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 "use strict";
+// 세대수 기준: 사용자가 가장 헷갈리기 쉬운 값이라 화면 '계산 기준' 맨 위에 따로 보여줌(엑셀 '기준' 시트에는 UNITS_LINE 한 줄)
+const UNITS_TITLE = "주거 세대수는 건축물대장에 등록된 집(세대·가구·호)의 개수입니다. 주민등록 세대 수나 실제 사는 가구 수가 아닙니다.";
+const UNITS_NOTES = [
+  "건물마다 건축물대장 표제부의 세대수와 가구수 중 큰 값을 셉니다. 아파트·연립·다세대는 세대수, 다가구주택은 가구수가 잡힙니다.",
+  "오피스텔은 전유부에서 오피스텔 층의 호(실) 수를 더합니다. 오피스텔만 있는 건물은 호수와 세대·가구수 중 큰 값을 씁니다.",
+  "단독주택처럼 주거 면적이 있는데 세대·가구가 0으로 적힌 주택은 1세대로 셉니다.",
+  "빈집 여부, 쪼개 쓰는 방(불법 개조 등), 건축물대장에 없는 건물은 반영되지 않습니다. 기준: 건축HUB 건축물대장 2026년 8월분.",
+  "여러 필지에 걸친 건물은 건축물대장의 대표 지번 필지에만 잡혀, 구역 경계에 걸친 건물은 통째로 들어가거나 빠질 수 있습니다.",
+];
+const UNITS_LINE = "주거 세대수(건축물대장상 주택 수, 주민등록 세대 아님): 건물마다 표제부 세대수·가구수 중 큰 값 + 오피스텔 호수(전유부 중 오피스텔 층의 호, 없으면 표제부 호수). 오피스텔만 있는 건물은 호수와 세대·가구수 중 큰 값. 주거 면적이 있는데 세대·가구가 0인 주택은 1세대. 빈집·실거주 여부는 반영 안 함.";
 const BASIS = [
   "필지·용도지역·필지면적: 브이월드 토지특성정보(2026-05-20). 필지면적은 토지대장 면적, 용도지역은 필지별 대표 용도지역(용도지역1).",
   "건축물: 건축HUB 건축물대장 대용량 자료 표제부·층별개요·전유부(2026년 8월분).",
   "구역에 포함되는 필지: 필지가 구역과 절반 이상 겹치면 포함(500㎡ 이상 필지는 필지 안 표본점의 절반 이상이 구역 안일 때, 그보다 작은 필지는 필지 안쪽 대표점이 구역 안일 때). 같은 분류 이름의 파일들은 하나의 구역으로 합쳐 계산(겹치는 땅은 한 번만).",
   "총 면적: 구역 폴리곤을 합친 면적(도로 포함, GIS 계산값). 필지면적: 포함된 필지의 토지대장 면적 합.",
   "주거: 단독주택·다가구·공동주택(아파트·연립·다세대·기숙사)·오피스텔. 그 외 용도는 비주거. 층별개요의 층별 용도로 나누고, 비주거 = 연면적 − 주거.",
-  "주거 세대수: 표제부 세대수·가구수 중 큰 값 + 오피스텔 호수(전유부 중 오피스텔 층의 호). 주거 층이 있는데 세대·가구가 0이면 1로 계산.",
+  UNITS_LINE,
   "용도지역별 면적: 포함된 필지의 면적을 필지별 용도지역으로 묶어 더한 값(한 필지가 두 용도지역에 걸치면 대표 용도지역으로 전부 계산).",
   "여러 필지에 걸친 건물은 건축물대장의 대표 지번 필지에만 잡힙니다.",
   "참고 인구: 구역에 필지면적 95% 이상이 들어온 집계구는 2024년 실측 총인구(통계청 SGIS), 나머지는 주거 세대수 × 그 집계구 평균가구원수로 추정. 세대수(2026)와 실측(2024)의 시점이 다릅니다.",
@@ -1144,7 +1158,8 @@ $("#q").addEventListener("keydown", e => { if (e.key === "Enter") findParcel(); 
 
 const MAP_NOTES = ["지도의 일반상업지역 표시는 공식 용도지역 도형(브이월드 2D데이터 LT_C_UQ111, 국토교통부 도시계획 정보)에서 일반상업지역만 골라 미리 그린 것입니다.",
   "결과표·엑셀의 용도지역별 면적은 필지별 대표 용도지역 기준이라, 한 필지가 여러 용도지역에 걸치면 지도 경계와 차이가 있을 수 있습니다."];
-const renderBasis = () => { $("#basis").innerHTML = BASIS.concat(MAP_NOTES).map(b=>`<li>${esc(b)}</li>`).join(""); };
+const renderBasis = () => { $("#basis").innerHTML = BASIS.filter(b => b !== UNITS_LINE).concat(MAP_NOTES).map(b=>`<li>${esc(b)}</li>`).join(""); };
+$("#unitsBasis").innerHTML = `<b>${esc(UNITS_TITLE)}</b><ul>${UNITS_NOTES.map(b => `<li>${esc(b)}</li>`).join("")}</ul>`;
 renderBasis();
 loadZnMeta().then(m => { MAP_NOTES[0] = `지도의 일반상업지역 표시는 공식 용도지역 도형인 ${m.source}에서 일반상업지역만 골라 그린 것입니다(${m.fetched} 받음).`; renderBasis(); }).catch(() => {});
 renderResults();
